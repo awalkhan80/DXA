@@ -5,10 +5,8 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   Scale, 
-  FileSpreadsheet,
-  Database,
-  Sliders,
-  Zap
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react';
 import { SummaryMetrics, ExpenseMetrics, CashFlowSummary } from '../types';
 import { formatAED } from '../lib/utils';
@@ -56,10 +54,10 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
   customLogo
 }) => {
   return (
-    <header className="bg-gradient-to-r from-[#161924] via-[#1C2030] to-[#161924] text-white border-b border-amber-900/40 px-3.5 py-2.5 shadow-md sticky top-0 z-30">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <header className="bg-[#0B1A30] text-white border-b border-blue-900/60 px-4 sm:px-6 py-3 shadow-md sticky top-0 z-30">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3.5">
         
-        {/* Left: Brand Identity & Active Section Title */}
+        {/* Left: Brand Identity & Subtitle */}
         <div className="flex items-center gap-3">
           <DesertXtremeLogo
             customLogo={customLogo}
@@ -68,38 +66,40 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-1.5 uppercase">
-                <span className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
+              <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5 uppercase">
+                <span className="bg-gradient-to-r from-white via-blue-100 to-amber-200 bg-clip-text text-transparent">
                   Desert Xtreme
                 </span>
-                <span className="text-[#FF7A00] font-bold">POS</span>
+                <span className="text-[#FF6B35] font-extrabold text-xs bg-[#FF6B35]/10 px-1.5 py-0.5 rounded border border-[#FF6B35]/30">
+                  POS
+                </span>
               </h1>
-              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+              <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>ONLINE</span>
+                <span className="tracking-wide">ONLINE</span>
               </span>
             </div>
-            <p className="text-[11px] text-amber-200/70 flex items-center gap-2 mt-0.5">
-              <span>Cash Register • Daily Float • Quick Vouchers</span>
+            <p className="text-[11px] text-blue-200/70 font-medium flex items-center gap-2 mt-0.5">
+              <span>Dubai Tour Operations & Safari Cashier</span>
             </p>
           </div>
         </div>
 
-        {/* Center: Live Financial Snapshot Badges in Brand Styling */}
-        <div className="hidden lg:flex items-center gap-2 bg-[#12141C]/90 border border-stone-800 rounded-xl p-1.5 px-3 shadow-inner">
+        {/* Center: Live Financial Snapshot Badges */}
+        <div className="hidden lg:flex items-center gap-3 bg-[#132A4A] border border-blue-800/60 rounded-xl p-1.5 px-3.5 shadow-inner">
           {/* Drawer Safe Float */}
           <div 
             onClick={onOpenReconciliation}
-            className="flex items-center gap-2 pr-3 border-r border-stone-800 cursor-pointer hover:opacity-80 transition-opacity"
-            title="Click to Count Safe Cash"
+            className="flex items-center gap-2.5 pr-3.5 border-r border-blue-800/60 cursor-pointer hover:opacity-90 transition-opacity"
+            title="Click for Daily Cashier Reconciliation Sheet"
           >
-            <div className="w-6 h-6 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400 border border-amber-500/30">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400 border border-amber-500/30 shrink-0">
               <Scale className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-stone-400 font-bold uppercase tracking-wider">Cash in Safe</div>
+              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Cash in Safe</div>
               <div className="text-xs font-mono font-black text-amber-300">
-                {formatAED(cashFlow.estimatedCashInDrawer)} <span className="text-[10px] font-normal text-stone-400">AED</span>
+                {formatAED(cashFlow.estimatedCashInDrawer)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
               </div>
             </div>
           </div>
@@ -107,16 +107,16 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           {/* Today's Sales */}
           <div 
             onClick={() => onNavigate('sales-history')}
-            className="flex items-center gap-2 px-3 border-r border-stone-800 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 px-3.5 border-r border-blue-800/60 cursor-pointer hover:opacity-90 transition-opacity"
             title="View Sales Register"
           >
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400 border border-emerald-500/30 shrink-0">
               <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-stone-400 font-bold uppercase tracking-wider">Sales Today</div>
+              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Sales Today</div>
               <div className="text-xs font-mono font-black text-emerald-400">
-                {formatAED(metrics.totalNet)} <span className="text-[10px] font-normal text-stone-400">AED</span>
+                {formatAED(metrics.totalNet)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
               </div>
             </div>
           </div>
@@ -124,24 +124,24 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           {/* Today's Expenses */}
           <div 
             onClick={() => onNavigate('expenses-history')}
-            className="flex items-center gap-2 pl-2 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 pl-2 cursor-pointer hover:opacity-90 transition-opacity"
             title="View Expense Register"
           >
-            <div className="w-6 h-6 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400 border border-rose-500/30">
+            <div className="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400 border border-rose-500/30 shrink-0">
               <ArrowDownRight className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-stone-400 font-bold uppercase tracking-wider">Expenses Today</div>
+              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Expenses Today</div>
               <div className="text-xs font-mono font-black text-rose-400">
-                {formatAED(expenseMetrics.totalExpense)} <span className="text-[10px] font-normal text-stone-400">AED</span>
+                {formatAED(expenseMetrics.totalExpense)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: QUICK ACTIONS Menu & Direct Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Main "QUICK ACTIONS" Dropdown Trigger */}
+        {/* Right: Quick Actions Menu & Direct Buttons */}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Quick Actions Dropdown */}
           <QuickActionsMenu
             onNavigate={onNavigate}
             onNewSale={onNewSaleClick}
@@ -155,7 +155,7 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
             onExportCsv={onExportCsv}
           />
 
-          {/* Direct + New Sale POS Button */}
+          {/* Primary CTA: + New Sale */}
           <button
             type="button"
             onClick={onNewSaleClick}
@@ -164,25 +164,25 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New Sale</span>
-            <span className="hidden sm:inline bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">F2</span>
+            <span className="hidden sm:inline bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">F2</span>
           </button>
 
-          {/* Direct + Expense Button */}
+          {/* Secondary CTA: + Expense */}
           <button
             type="button"
             onClick={onNewExpenseClick}
-            className="flex items-center gap-1.5 bg-stone-800 hover:bg-rose-950/70 text-rose-300 hover:text-white border border-rose-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 bg-[#132A4A] hover:bg-rose-950/80 text-rose-300 hover:text-white border border-rose-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
             title="Record Expense Voucher (Alt+E)"
           >
             <Plus className="w-3.5 h-3.5 text-rose-400" />
             <span>Expense</span>
           </button>
 
-          {/* Direct + Capital Button */}
+          {/* Secondary CTA: + Capital */}
           <button
             type="button"
             onClick={onOpenCapitalModal}
-            className="hidden sm:flex items-center gap-1.5 bg-stone-800 hover:bg-emerald-950/70 text-emerald-300 hover:text-white border border-emerald-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 bg-[#132A4A] hover:bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
             title="Inject Owner Capital (Alt+C)"
           >
             <Wallet className="w-3.5 h-3.5 text-emerald-400" />
@@ -194,3 +194,4 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
     </header>
   );
 };
+

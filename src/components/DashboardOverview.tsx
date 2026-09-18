@@ -32,7 +32,6 @@ import { CashFlowSummary, SummaryMetrics, ExpenseMetrics, SaleRecord, ExpenseRec
 import { formatAED } from '../lib/utils';
 import { NavView } from './AppSidebar';
 import { db } from '../db/sqlite';
-import { DesertXtremeLogo } from './DesertXtremeLogo';
 
 interface DashboardOverviewProps {
   cashFlow: CashFlowSummary;
@@ -168,64 +167,46 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   return (
     <div className="space-y-6">
       {/* ─────────────────────────────────────────────────────────────
-          1. BRAND HERO HEADER (Desert Flame & Sunburst Gradient)
+          ELEGANT & PROFESSIONAL HERO SECTION (EXECUTIVE BLUE)
           ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl p-6 sm:p-7 bg-gradient-to-r from-[#FF5722] via-[#FF6B35] to-[#F7931E] text-white shadow-xl relative overflow-hidden border border-amber-300/40">
-        {/* Subtle desert dune decorative curve */}
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute left-1/3 -top-12 w-48 h-48 bg-yellow-300/15 rounded-full blur-xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-[#0B1E38] via-[#152E54] to-[#0B1E38] rounded-2xl p-5 sm:p-6 text-white border border-blue-900/60 shadow-md relative overflow-hidden">
+        {/* Subtle radial glow background accent */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF6B35]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-4">
-            <DesertXtremeLogo size="lg" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-sm uppercase">
-                  Desert Xtreme Adventure
-                </h1>
-              </div>
-              <p className="text-amber-100 text-xs sm:text-sm font-medium flex items-center gap-2 mt-1">
-                <span>Live Accounting, Daily Cash Flow & Operations Intelligence</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline font-mono bg-black/20 px-2 py-0.5 rounded text-amber-200 text-xs">
-                  {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </p>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+          {/* Left: Brand Identity & Current Date */}
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
+                Desert Xtreme Adventure
+              </h1>
+              <span className="bg-[#FF6B35]/20 text-[#FF6B35] text-[10px] font-black px-2 py-0.5 rounded border border-[#FF6B35]/40 tracking-wider">
+                POS ENGINE
+              </span>
             </div>
+            <p className="text-blue-200/80 text-xs sm:text-sm font-medium flex items-center gap-2 mt-1 flex-wrap">
+              <span>Dubai Tour Operations & Cash Flow Management</span>
+              <span className="text-blue-400/40 hidden sm:inline">•</span>
+              <span className="font-mono text-blue-100 text-xs bg-blue-950/80 px-2.5 py-0.5 rounded-lg border border-blue-800/60">
+                {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start md:self-auto">
-            <div className="bg-black/30 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-xs">
-              <div className="text-[10px] uppercase font-black text-amber-200 tracking-wider">Engine Status</div>
-              <div className="text-xs font-mono font-bold text-white flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>SQLite DB • Offline-Ready</span>
-              </div>
-            </div>
+          {/* Right: Engine & Sync Status */}
+          <div className="flex items-center gap-2 text-xs font-mono bg-blue-950/90 border border-blue-800/60 px-3 py-1.5 rounded-xl self-start lg:self-auto shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-emerald-400 font-semibold">SQLite Embedded DB</span>
+            <span className="text-blue-400/40">|</span>
+            <span className="text-blue-200/70">Offline Ready</span>
           </div>
         </div>
-      </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. HIGH-IMPACT "QUICK ACTIONS" MENU BAR
-          ───────────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-[#141724] via-[#1A1E2E] to-[#141724] text-white rounded-2xl p-5 shadow-lg border border-amber-500/30">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#FF6B35] to-[#F7931E] flex items-center justify-center text-white shadow-md border border-amber-300/40 shrink-0">
-              <Zap className="w-5 h-5 fill-current text-white animate-pulse" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-amber-300 flex items-center gap-2">
-                <span>QUICK ACTIONS</span>
-                <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30 font-mono">
-                  HOTKEYS
-                </span>
-              </h3>
-              <p className="text-xs text-stone-300 mt-0.5">
-                Instant shortcuts for cashier and financial management
-              </p>
-            </div>
+        {/* Integrated Quick Action Toolbar */}
+        <div className="mt-5 pt-4 border-t border-blue-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-2 text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+            <Zap className="w-4 h-4 text-[#FF6B35]" />
+            <span>Quick Actions</span>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 flex-wrap">
@@ -233,55 +214,55 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('sales-new')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white text-xs font-black hover:brightness-110 transition-all shadow-md cursor-pointer active:scale-95 border border-amber-300/30"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#FF6B35] hover:bg-[#ff7a47] text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-[#FF6B35]/50"
               title="Shortcut: F2"
             >
               <PlusCircle className="w-4 h-4" />
               <span>New Sale</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">F2</span>
+              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">F2</span>
             </button>
 
             {/* [Add Expense] */}
             <button
               type="button"
               onClick={() => onNavigate('expenses-add')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition-all shadow-sm cursor-pointer active:scale-95 border border-rose-400/30"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-rose-950/80 text-rose-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-rose-500/40"
               title="Shortcut: Alt+E"
             >
-              <TrendingDown className="w-4 h-4" />
+              <TrendingDown className="w-4 h-4 text-rose-400" />
               <span>Expense</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">Alt+E</span>
+              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">Alt+E</span>
             </button>
 
             {/* [Capital Deposit] */}
             <button
               type="button"
               onClick={onOpenCapitalModal}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm cursor-pointer active:scale-95 border border-emerald-400/30"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-emerald-950/80 text-emerald-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-emerald-500/40"
               title="Shortcut: Alt+C"
             >
-              <Wallet className="w-4 h-4" />
+              <Wallet className="w-4 h-4 text-emerald-400" />
               <span>Capital</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">Alt+C</span>
+              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">Alt+C</span>
             </button>
 
             {/* [Safe Drawer Audit] */}
             <button
               type="button"
               onClick={onOpenReconciliation}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black transition-all shadow-sm cursor-pointer active:scale-95 border border-amber-400/30"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-amber-950/80 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-amber-500/40"
               title="Shortcut: Alt+R"
             >
-              <Scale className="w-4 h-4 text-amber-200" />
+              <Scale className="w-4 h-4 text-amber-400" />
               <span>Safe Audit</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">Alt+R</span>
+              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">Alt+R</span>
             </button>
 
             {/* [View Reports] */}
             <button
               type="button"
               onClick={() => onNavigate('reports-cashflow')}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-black transition-all shadow-sm cursor-pointer active:scale-95 border border-stone-700"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-blue-900 text-blue-100 text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-blue-700/60"
             >
               <FileSpreadsheet className="w-4 h-4 text-amber-400" />
               <span>Reports</span>

@@ -33,6 +33,7 @@ import { OwnerCapitalInjection } from './components/OwnerCapitalInjection';
 import { AppSidebar, NavView } from './components/AppSidebar';
 import { DashboardOverview } from './components/DashboardOverview';
 import { ReportsModule } from './components/ReportsModule';
+import { AppFooter } from './components/AppFooter';
 import { exportTodaySalesToExcel, exportTodayExpensesToExcel } from './lib/excelExport';
 
 export default function App() {
@@ -851,46 +852,13 @@ export default function App() {
       )}
 
       {/* 4. Desktop Status Footer */}
-      <footer className="bg-stone-100 border-t border-stone-200/80 py-2.5 px-6 text-xs text-stone-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="w-2 h-2 rounded-full bg-[#06D6A0]"></span>
-          <span className="font-semibold text-stone-700">DESERT XTREME ADVENTURE</span>
-          <span>•</span>
-          <span className="text-stone-600">Step 1 (Sales) + Step 2 (Expenses & Capital)</span>
-          <span>•</span>
-          <span className="font-mono text-[11px] text-stone-500">Database: SQLite (sales.db • 7 tables)</span>
-        </div>
-
-        <div className="flex items-center gap-4 text-[11px] flex-wrap">
-          <button
-            onClick={() => setIsMasterDataOpen(true)}
-            className="hover:text-[#FF6B35] transition-colors cursor-pointer"
-          >
-            Counters, Methods & Categories
-          </button>
-          <span>•</span>
-          <button
-            onClick={() => setIsCapitalModalOpen(true)}
-            className="hover:text-[#FF6B35] transition-colors cursor-pointer text-emerald-700 font-semibold"
-          >
-            + Owner Capital ({capitalInjections.length})
-          </button>
-          <span>•</span>
-          <button
-            onClick={() => setIsReconciliationOpen(true)}
-            className="hover:text-[#FF6B35] transition-colors cursor-pointer"
-          >
-            Daily Cashier Balance Sheet
-          </button>
-          <span>•</span>
-          <button
-            onClick={() => setIsSqlConsoleOpen(true)}
-            className="hover:text-[#FF6B35] transition-colors cursor-pointer"
-          >
-            SQLite Console
-          </button>
-        </div>
-      </footer>
+      <AppFooter
+        onOpenMasterData={() => setIsMasterDataOpen(true)}
+        onOpenCapitalModal={() => setIsCapitalModalOpen(true)}
+        onOpenReconciliation={() => setIsReconciliationOpen(true)}
+        onOpenSqlConsole={() => setIsSqlConsoleOpen(true)}
+        capitalInjectionsCount={capitalInjections.length}
+      />
 
       {/* Modals */}
       {receiptSale && (
