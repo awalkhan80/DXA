@@ -1,0 +1,6 @@
+{
+  "name": "Desert Xtreme Adventure - Income Entry",
+  "description": "Desert Xtreme POS & Cash Flow System with Income Entry, Expenses & Owner Capital Tracking, Cash Flow & Financial Reports, Excel/PDF exports, Backup & Restore, and Windows .exe installer build ready.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
