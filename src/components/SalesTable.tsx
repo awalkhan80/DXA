@@ -121,7 +121,7 @@ export const SalesTable: React.FC<SalesTableProps> = ({
             </span>
           </h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            Real-time ledger stored in local embedded SQLite database
+            Real-time sales transaction ledger
           </p>
         </div>
 
@@ -252,10 +252,10 @@ export const SalesTable: React.FC<SalesTableProps> = ({
             <button
               onClick={onExportSql}
               className="flex items-center gap-1 text-[11px] font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-              title="Download SQLite .SQL Dump"
+              title="Download System Data Backup"
             >
               <Download className="w-3 h-3 text-[#FF6B35]" />
-              <span>.SQL</span>
+              <span>Backup DB</span>
             </button>
           </div>
         </div>

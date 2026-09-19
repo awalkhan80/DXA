@@ -87,7 +87,7 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Real-time query from local SQLite <code className="text-stone-700 font-mono">expenses</code> table
+              Real-time expense outflows ledger
             </p>
           </div>
 
@@ -113,7 +113,7 @@ export const ExpensesTable: React.FC<ExpensesTableProps> = ({
             <button
               onClick={onRefresh}
               className="flex items-center gap-1 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-100 border border-stone-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-              title="Refresh from SQLite Database (F5)"
+              title="Refresh expense records (F5)"
             >
               <RefreshCw className="w-3.5 h-3.5 text-stone-600" />
               <span className="hidden sm:inline">Refresh (F5)</span>

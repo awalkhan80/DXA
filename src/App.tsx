@@ -32,6 +32,11 @@ import { DailyReconciliationModal } from './components/DailyReconciliationModal'
 import { OwnerCapitalInjection } from './components/OwnerCapitalInjection';
 import { AppSidebar, NavView } from './components/AppSidebar';
 import { DashboardOverview } from './components/DashboardOverview';
+import { VehicleManagement } from './components/VehicleManagement';
+import { CustomerReporting } from './components/CustomerReporting';
+import { CreditHistoryModule } from './components/CreditHistoryModule';
+import { PettyCashTransferModule } from './components/PettyCashTransferModule';
+import { PendingExpensesModule } from './components/PendingExpensesModule';
 import { ReportsModule } from './components/ReportsModule';
 import { AppFooter } from './components/AppFooter';
 import { exportTodaySalesToExcel, exportTodayExpensesToExcel } from './lib/excelExport';
@@ -509,6 +514,7 @@ export default function App() {
           {/* 2. Brand Header Banner with Desert Gradient & Module Switcher */}
           <HeaderBanner
             activeModule={activeModule}
+            currentView={currentView}
             customLogo={customLogo}
             onSelectModule={(mod) => {
               setActiveModule(mod);
@@ -819,6 +825,31 @@ export default function App() {
                   onDeleteCapital={handleDeleteCapital}
                 />
               </div>
+            )}
+
+            {/* VIEW: VEHICLE FLEET MANAGEMENT */}
+            {currentView === 'vehicles-fleet' && (
+              <VehicleManagement />
+            )}
+
+            {/* VIEW: CUSTOMER REPORTING & DIRECTORY */}
+            {currentView === 'customers-report' && (
+              <CustomerReporting />
+            )}
+
+            {/* VIEW: ACCOUNTS RECEIVABLE (B2B CREDIT) */}
+            {currentView === 'credit-history' && (
+              <CreditHistoryModule initialTab="accounts-receivable" />
+            )}
+
+            {/* VIEW: PETTY CASH SYSTEM */}
+            {currentView === 'petty-cash' && (
+              <PettyCashTransferModule />
+            )}
+
+            {/* VIEW: ACCOUNTS PAYABLE (EXPENSE CREDIT HISTORY) */}
+            {currentView === 'pending-expenses' && (
+              <CreditHistoryModule initialTab="accounts-payable" />
             )}
 
             {/* VIEW 5: STEP 3 REPORTING MODULE */}

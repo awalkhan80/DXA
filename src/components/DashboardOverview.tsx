@@ -82,29 +82,37 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const todayCapitalList = allCapital.filter((c) => c.injection_date === todayStr);
   const todayB2BPaymentsList = allB2BPayments.filter((p) => p.payment_date === todayStr);
 
-  const todayTotalSalesGross = todaySalesList.reduce((sum, s) => sum + s.gross_amount, 0);
-  const todayTotalSalesNet = todaySalesList.reduce((sum, s) => sum + s.net_amount, 0);
-  const todayCashSalesGross = todaySalesList.filter(s => s.payment_method === 'Cash').reduce((sum, s) => sum + s.gross_amount, 0);
-  const todayCardSalesGross = todaySalesList.filter(s => s.payment_method === 'Card').reduce((sum, s) => sum + s.gross_amount, 0);
-  const todayB2BPaymentsCash = todayB2BPaymentsList.filter(p => p.payment_method === 'Cash').reduce((sum, p) => sum + p.amount, 0);
-  const todayCommissionsPaidCash = todaySalesList.reduce((sum, s) => sum + s.commission_amount, 0);
-  const todayCommissionRate = (todayTotalSalesGross || todayTotalSalesNet) > 0 ? (todayCommissionsPaidCash / (todayTotalSalesGross || todayTotalSalesNet)) * 100 : 0;
-  const todayTotalExpenses = todayExpensesList.reduce((sum, e) => sum + e.amount, 0);
-  const todayCashExpenses = todayExpensesList.filter(e => e.expense_source === 'Daily Sales Cash' || e.expense_source === 'Petty Cash Box').reduce((sum, e) => sum + e.amount, 0);
-  const todayOwnerCapital = todayCapitalList.reduce((sum, c) => sum + c.amount, 0);
+  const todayTotalSalesGross = todaySalesList.reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const todayTotalSalesNet = todaySalesList.reduce((sum, s) => sum + (Number(s.net_amount) || 0), 0);
+  const todayCashSalesGross = todaySalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'cash').reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const todayCardSalesGross = todaySalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'card').reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const todayB2BPaymentsCash = todayB2BPaymentsList.filter(p => (p.payment_method || '').trim().toLowerCase() === 'cash').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   
+  // Accurately aggregate commissions from ALL daily transactions regardless of payment method
+  const todayCommissionsPaidCash = todaySalesList.reduce((sum, s) => sum + (Number(s.commission_amount) || 0), 0);
+  const todayCommissionRate = (todayTotalSalesGross || todayTotalSalesNet) > 0 ? (todayCommissionsPaidCash / (todayTotalSalesGross || todayTotalSalesNet)) * 100 : 0;
+  const todayTotalExpenses = todayExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const todayCashExpenses = todayExpensesList.filter(e => e.expense_source === 'Daily Sales Cash' || e.expense_source === 'Petty Cash Box').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const todayOwnerCapital = todayCapitalList.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  
+  // Physical Cash Inflow = Daily Cash Sales + B2B Cash Collected + Owner Capital Float
+  const todayTotalCashInflow = todayCashSalesGross + todayB2BPaymentsCash + todayOwnerCapital;
+  // Physical Cash Outflow = Cash Commissions (paid across all sales) + Cash Expenses
+  const todayTotalCashOutflow = todayCommissionsPaidCash + todayCashExpenses;
+
   // Rule: Cash in hand = Cash Sales + B2B Cash Received + Owner Capital - Cash Commissions (including on Card sales) - Cash Expenses
-  const todayCashInHand = Math.round((todayCashSalesGross + todayB2BPaymentsCash + todayOwnerCapital - todayCommissionsPaidCash - todayCashExpenses) * 100) / 100;
+  const todayCashInHand = Math.round((todayTotalCashInflow - todayTotalCashOutflow) * 100) / 100;
   const todayNetCashFlow = Math.round((todayTotalSalesNet + todayOwnerCapital - todayTotalExpenses) * 100) / 100;
   const todayTransCount = todaySalesList.length;
 
   // Today's Guide Breakdown
   const todayCommissionsByGuide: { guide: string; amount: number; count: number }[] = Object.entries(
     todaySalesList.reduce((acc, s) => {
-      if (s.commission_amount > 0) {
+      const comm = Number(s.commission_amount) || 0;
+      if (comm > 0) {
         const guide = s.guide_name?.trim() || 'Unassigned Guide';
         if (!acc[guide]) acc[guide] = { amount: 0, count: 0 };
-        acc[guide].amount += s.commission_amount;
+        acc[guide].amount += comm;
         acc[guide].count += 1;
       }
       return acc;
@@ -116,15 +124,24 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const monthSalesList = allSales.filter((s) => s.sale_date >= monthStartStr && s.sale_date <= todayStr);
   const monthExpensesList = allExpenses.filter((e) => e.expense_date >= monthStartStr && e.expense_date <= todayStr);
   const monthCapitalList = allCapital.filter((c) => c.injection_date >= monthStartStr && c.injection_date <= todayStr);
+  const monthB2BPaymentsList = allB2BPayments.filter((p) => p.payment_date >= monthStartStr && p.payment_date <= todayStr);
 
-  const monthTotalSalesGross = monthSalesList.reduce((sum, s) => sum + s.gross_amount, 0);
-  const monthTotalSalesNet = monthSalesList.reduce((sum, s) => sum + s.net_amount, 0);
-  const monthCashSalesGross = monthSalesList.filter(s => s.payment_method === 'Cash').reduce((sum, s) => sum + s.gross_amount, 0);
-  const monthCardSalesGross = monthSalesList.filter(s => s.payment_method === 'Card').reduce((sum, s) => sum + s.gross_amount, 0);
-  const monthCommissionsPaidCash = monthSalesList.reduce((sum, s) => sum + s.commission_amount, 0);
+  const monthTotalSalesGross = monthSalesList.reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const monthTotalSalesNet = monthSalesList.reduce((sum, s) => sum + (Number(s.net_amount) || 0), 0);
+  const monthCashSalesGross = monthSalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'cash').reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const monthCardSalesGross = monthSalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'card').reduce((sum, s) => sum + (Number(s.gross_amount) || 0), 0);
+  const monthB2BPaymentsCash = monthB2BPaymentsList.filter(p => (p.payment_method || '').trim().toLowerCase() === 'cash').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  
+  // Accurately aggregate commissions from ALL monthly transactions
+  const monthCommissionsPaidCash = monthSalesList.reduce((sum, s) => sum + (Number(s.commission_amount) || 0), 0);
   const monthCommissionRate = (monthTotalSalesGross || monthTotalSalesNet) > 0 ? (monthCommissionsPaidCash / (monthTotalSalesGross || monthTotalSalesNet)) * 100 : 0;
-  const monthTotalExpenses = monthExpensesList.reduce((sum, e) => sum + e.amount, 0);
-  const monthOwnerCapital = monthCapitalList.reduce((sum, c) => sum + c.amount, 0);
+  const monthTotalExpenses = monthExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const monthCashExpenses = monthExpensesList.filter(e => e.expense_source === 'Daily Sales Cash' || e.expense_source === 'Petty Cash Box').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const monthOwnerCapital = monthCapitalList.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+
+  const monthTotalCashInflow = monthCashSalesGross + monthB2BPaymentsCash + monthOwnerCapital;
+  const monthTotalCashOutflow = monthCommissionsPaidCash + monthCashExpenses;
+  const monthCashInHand = Math.round((monthTotalCashInflow - monthTotalCashOutflow) * 100) / 100;
   const monthNet = monthTotalSalesNet + monthOwnerCapital - monthTotalExpenses;
 
   // 3. COUNTER PERFORMANCE (TODAY / MONTH / ALL)
@@ -167,11 +184,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   return (
     <div className="space-y-6">
       {/* ─────────────────────────────────────────────────────────────
-          ELEGANT & PROFESSIONAL HERO SECTION (EXECUTIVE BLUE)
+          ELEGANT & PROFESSIONAL HERO SECTION (EXECUTIVE SLATE)
           ───────────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-[#0B1E38] via-[#152E54] to-[#0B1E38] rounded-2xl p-5 sm:p-6 text-white border border-blue-900/60 shadow-md relative overflow-hidden">
-        {/* Subtle radial glow background accent */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF6B35]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-slate-900 rounded-2xl p-5 sm:p-6 text-white border border-slate-800 shadow-md relative overflow-hidden">
+        {/* Subtle radial background accent */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF6B35]/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           {/* Left: Brand Identity & Current Date */}
@@ -180,31 +197,31 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
                 Desert Xtreme Adventure
               </h1>
-              <span className="bg-[#FF6B35]/20 text-[#FF6B35] text-[10px] font-black px-2 py-0.5 rounded border border-[#FF6B35]/40 tracking-wider">
+              <span className="bg-[#FF6B35]/15 text-[#FF6B35] text-[10px] font-black px-2 py-0.5 rounded border border-[#FF6B35]/30 tracking-wider">
                 POS ENGINE
               </span>
             </div>
-            <p className="text-blue-200/80 text-xs sm:text-sm font-medium flex items-center gap-2 mt-1 flex-wrap">
+            <p className="text-slate-300 text-xs sm:text-sm font-medium flex items-center gap-2 mt-1 flex-wrap">
               <span>Dubai Tour Operations & Cash Flow Management</span>
-              <span className="text-blue-400/40 hidden sm:inline">•</span>
-              <span className="font-mono text-blue-100 text-xs bg-blue-950/80 px-2.5 py-0.5 rounded-lg border border-blue-800/60">
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <span className="font-mono text-slate-200 text-xs bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-700">
                 {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </p>
           </div>
 
-          {/* Right: Engine & Sync Status */}
-          <div className="flex items-center gap-2 text-xs font-mono bg-blue-950/90 border border-blue-800/60 px-3 py-1.5 rounded-xl self-start lg:self-auto shrink-0">
+          {/* Right: Engine Status */}
+          <div className="flex items-center gap-2 text-xs font-mono bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-xl self-start lg:self-auto shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-emerald-400 font-semibold">SQLite Embedded DB</span>
-            <span className="text-blue-400/40">|</span>
-            <span className="text-blue-200/70">Offline Ready</span>
+            <span className="text-emerald-400 font-semibold">Local Secure DB</span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-300">Offline Ready</span>
           </div>
         </div>
 
         {/* Integrated Quick Action Toolbar */}
-        <div className="mt-5 pt-4 border-t border-blue-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-          <div className="flex items-center gap-2 text-xs font-bold text-blue-200/80 uppercase tracking-wider">
+        <div className="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
             <Zap className="w-4 h-4 text-[#FF6B35]" />
             <span>Quick Actions</span>
           </div>
@@ -214,7 +231,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('sales-new')}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#FF6B35] hover:bg-[#ff7a47] text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-[#FF6B35]/50"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#FF6B35] hover:bg-[#ff7a47] text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-[#FF6B35]/40"
               title="Shortcut: F2"
             >
               <PlusCircle className="w-4 h-4" />
@@ -226,7 +243,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('expenses-add')}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-rose-950/80 text-rose-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-rose-500/40"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/80 text-rose-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-rose-500/40"
               title="Shortcut: Alt+E"
             >
               <TrendingDown className="w-4 h-4 text-rose-400" />
@@ -238,31 +255,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <button
               type="button"
               onClick={onOpenCapitalModal}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-emerald-950/80 text-emerald-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-emerald-500/40"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-emerald-950/80 text-emerald-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-emerald-500/40"
               title="Shortcut: Alt+C"
             >
               <Wallet className="w-4 h-4 text-emerald-400" />
               <span>Capital</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">Alt+C</span>
             </button>
 
             {/* [Safe Drawer Audit] */}
             <button
               type="button"
               onClick={onOpenReconciliation}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-amber-950/80 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-amber-500/40"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-amber-950/80 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-amber-500/40"
               title="Shortcut: Alt+R"
             >
               <Scale className="w-4 h-4 text-amber-400" />
               <span>Safe Audit</span>
-              <span className="bg-black/25 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ml-0.5">Alt+R</span>
             </button>
 
             {/* [View Reports] */}
             <button
               type="button"
               onClick={() => onNavigate('reports-cashflow')}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-[#132A4A] hover:bg-blue-900 text-blue-100 text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-blue-700/60"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 border border-slate-700"
             >
               <FileSpreadsheet className="w-4 h-4 text-amber-400" />
               <span>Reports</span>
@@ -318,15 +333,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {formatAED(todayCardSalesGross)} <span className="text-xs font-normal text-stone-400">AED</span>
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-              <span>Terminal:</span>
-              <span className="font-bold text-stone-700">{todaySalesList.filter(s => s.payment_method === 'Card').length} tickets</span>
+              <span>Terminal Bank:</span>
+              <span className="font-bold text-stone-700">{todaySalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'card').length} tickets</span>
             </div>
           </div>
 
           {/* Cash Sales */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200 shadow-xs hover:border-emerald-300 transition-colors">
             <div className="flex items-center justify-between text-stone-500 text-xs font-bold uppercase tracking-wider mb-1">
-              <span>Cash Sales</span>
+              <span>Daily Cash Sales</span>
               <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200/50">
                 <Banknote className="w-4 h-4" />
               </div>
@@ -335,15 +350,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {formatAED(todayCashSalesGross)} <span className="text-xs font-normal text-stone-400">AED</span>
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-              <span>In Drawer:</span>
-              <span className="font-bold text-stone-700">+{formatAED(todayB2BPaymentsCash)} B2B</span>
+              <span>B2B Receipts:</span>
+              <span className="font-bold text-emerald-800">+{formatAED(todayB2BPaymentsCash)} Cash</span>
             </div>
           </div>
 
           {/* Commissions Card */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200 shadow-xs hover:border-amber-300 transition-colors">
             <div className="flex items-center justify-between text-stone-500 text-xs font-bold uppercase tracking-wider mb-1">
-              <span>Commissions</span>
+              <span>Total Commissions</span>
               <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200/50">
                 <Percent className="w-4 h-4" />
               </div>
@@ -352,7 +367,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {formatAED(todayCommissionsPaidCash)} <span className="text-xs font-normal text-stone-400">AED</span>
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-              <span>Guides:</span>
+              <span>All Transactions:</span>
               <span className="font-mono font-bold text-amber-800">{todayCommissionRate.toFixed(1)}% rate</span>
             </div>
           </div>
@@ -369,19 +384,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {formatAED(todayTotalExpenses)} <span className="text-xs font-normal text-stone-400">AED</span>
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-              <span>Logged:</span>
-              <span className="font-bold text-stone-700">{todayExpensesList.length} expenses</span>
+              <span>Cash Expenses:</span>
+              <span className="font-bold text-rose-700">{formatAED(todayCashExpenses)} AED</span>
             </div>
           </div>
 
           {/* Net Cash in Hand / Drawer */}
           <div className={`rounded-2xl p-4 sm:p-5 border shadow-xs transition-colors ${
             todayCashInHand >= 0 
-              ? 'bg-emerald-50/70 border-emerald-200 hover:border-emerald-300' 
-              : 'bg-rose-50/70 border-rose-200 hover:border-rose-300'
+              ? 'bg-emerald-50/90 border-emerald-300 hover:border-emerald-400' 
+              : 'bg-rose-50/90 border-rose-300 hover:border-rose-400'
           }`}>
-            <div className="flex items-center justify-between text-stone-600 text-xs font-bold uppercase tracking-wider mb-1">
-              <span>Net Cash in Hand</span>
+            <div className="flex items-center justify-between text-stone-700 text-xs font-bold uppercase tracking-wider mb-1">
+              <span>Net Cash In Hand</span>
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                 todayCashInHand >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
               }`}>
@@ -389,34 +404,51 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
             </div>
             <div className={`text-xl sm:text-2xl font-black font-mono flex items-center gap-1 ${
-              todayCashInHand >= 0 ? 'text-emerald-800' : 'text-rose-700'
+              todayCashInHand >= 0 ? 'text-emerald-900' : 'text-rose-800'
             }`}>
               <span>{todayCashInHand >= 0 ? `+${formatAED(todayCashInHand)}` : formatAED(todayCashInHand)}</span>
-              <span className="text-xs font-normal text-stone-500">AED</span>
+              <span className="text-xs font-normal text-stone-600">AED</span>
             </div>
-            <div className="text-[11px] text-stone-600 mt-1 font-medium flex items-center justify-between">
-              <span>Drawer Safe:</span>
-              <span className="font-mono font-bold text-emerald-800">Ready</span>
+            <div className="text-[10px] text-stone-600 mt-1 font-medium flex items-center justify-between pt-1 border-t border-stone-200/60">
+              <span>In: +{formatAED(todayTotalCashInflow)}</span>
+              <span>Out: -{formatAED(todayTotalCashOutflow)}</span>
             </div>
           </div>
         </div>
 
-        {/* Guide Commissions Breakdown Chips (if present today) */}
-        {todayCommissionsByGuide.length > 0 && (
-          <div className="mt-3 bg-amber-50/60 border border-amber-200/80 rounded-xl px-3.5 py-2 flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-bold text-amber-800 flex items-center gap-1 shrink-0">
-              <Users className="w-3.5 h-3.5 text-amber-600" />
-              <span>Guide Payouts Today:</span>
-            </span>
-            {todayCommissionsByGuide.map((g) => (
-              <span key={g.guide} className="bg-white border border-amber-300/80 text-amber-900 font-medium px-2 py-0.5 rounded-lg text-[11px] shadow-2xs flex items-center gap-1">
-                <span>{g.guide}:</span>
-                <span className="font-mono font-bold text-amber-700">{formatAED(g.amount)} AED</span>
-                <span className="text-[10px] text-stone-400">({g.count}x)</span>
-              </span>
-            ))}
+        {/* Cash In Hand Formula Strip & Guide Commissions Breakdown */}
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+          {/* Formula Strip */}
+          <div className="bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 flex items-center gap-2 text-stone-700">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="text-[11px] font-medium leading-tight">
+              <span className="font-bold text-stone-800">Net Cash In Hand Math: </span>
+              <span>(Cash Sales: <strong className="text-emerald-700">{formatAED(todayCashSalesGross)}</strong> + B2B Cash: <strong className="text-emerald-700">{formatAED(todayB2BPaymentsCash)}</strong> + Float: <strong className="text-emerald-700">{formatAED(todayOwnerCapital)}</strong>) − (Commissions: <strong className="text-amber-700">{formatAED(todayCommissionsPaidCash)}</strong> + Cash Expenses: <strong className="text-rose-700">{formatAED(todayCashExpenses)}</strong>)</span>
+            </div>
           </div>
-        )}
+
+          {/* Guide Commission Breakdown */}
+          {todayCommissionsByGuide.length > 0 ? (
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl px-3.5 py-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold text-amber-900 flex items-center gap-1 shrink-0">
+                <Users className="w-3.5 h-3.5 text-amber-600" />
+                <span>Guide Payouts Today:</span>
+              </span>
+              {todayCommissionsByGuide.map((g) => (
+                <span key={g.guide} className="bg-white border border-amber-300 text-amber-900 font-medium px-2 py-0.5 rounded-lg text-[11px] shadow-2xs flex items-center gap-1">
+                  <span>{g.guide}:</span>
+                  <span className="font-mono font-bold text-amber-700">{formatAED(g.amount)} AED</span>
+                  <span className="text-[10px] text-stone-400">({g.count}x)</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 flex items-center gap-2 text-[11px] text-stone-500">
+              <Users className="w-3.5 h-3.5 text-stone-400" />
+              <span>No guide commissions logged yet today</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -466,8 +498,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               {formatAED(monthCardSalesGross)} <span className="text-xs font-normal text-stone-400">AED</span>
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
-              <span>Terminal:</span>
-              <span className="font-bold text-stone-700">{monthSalesList.filter(s => s.payment_method === 'Card').length} tickets</span>
+              <span>Terminal Bank:</span>
+              <span className="font-bold text-stone-700">{monthSalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'card').length} tickets</span>
             </div>
           </div>
 
@@ -484,7 +516,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
             <div className="text-[11px] text-stone-500 mt-1 font-medium flex items-center justify-between">
               <span>Volume:</span>
-              <span className="font-bold text-stone-700">{monthSalesList.filter(s => s.payment_method === 'Cash').length} tickets</span>
+              <span className="font-bold text-stone-700">{monthSalesList.filter(s => (s.payment_method || '').trim().toLowerCase() === 'cash').length} tickets</span>
             </div>
           </div>
 

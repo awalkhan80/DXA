@@ -162,7 +162,7 @@ export const OwnerCapitalInjection: React.FC<OwnerCapitalInjectionProps> = ({
 
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-emerald-950 bg-white/40 px-2.5 py-1.5 rounded-lg border border-white/40 font-bold backdrop-blur-xs">
-              <span>SQLite: capital_injections</span>
+              <span>Master Capital Ledger</span>
             </div>
             {isModal && onCloseModal && (
               <button

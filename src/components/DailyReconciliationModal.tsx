@@ -101,7 +101,7 @@ export const DailyReconciliationModal: React.FC<DailyReconciliationModalProps> =
                   <Scale className="w-3.5 h-3.5 text-[#F7931E]" />
                   <span>Physical Cash Drawer Count & Audit Formula</span>
                 </span>
-                <span className="text-[10px] font-mono text-stone-300">SQLite Auto Balanced</span>
+                <span className="text-[10px] font-mono text-stone-300">Auto Balanced</span>
               </div>
               <div className="p-3.5 space-y-2 bg-stone-50/60 font-mono text-xs">
                 <div className="flex items-center justify-between py-1 border-b border-stone-200">
@@ -217,7 +217,7 @@ export const DailyReconciliationModal: React.FC<DailyReconciliationModalProps> =
         {/* Modal Footer */}
         <div className="bg-stone-100 px-5 py-3 border-t border-stone-200 flex items-center justify-between">
           <span className="text-[11px] text-stone-500 font-mono">
-            SQLite audit log compliant
+            System audit log compliant
           </span>
 
           <div className="flex items-center gap-2">

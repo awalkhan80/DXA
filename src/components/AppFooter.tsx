@@ -25,7 +25,7 @@ export const AppFooter: React.FC<AppFooterProps> = ({
           <div className="flex items-center gap-1.5 bg-blue-950/80 text-emerald-400 px-2.5 py-1 rounded-lg border border-blue-800/60 text-[11px] font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
             <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-            <span>SQLite Local DB</span>
+            <span>Local DB Connected</span>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400 font-medium">
@@ -100,10 +100,10 @@ export const AppFooter: React.FC<AppFooterProps> = ({
             type="button"
             onClick={onOpenSqlConsole}
             className="flex items-center gap-1 text-slate-400 hover:text-white hover:underline transition-colors cursor-pointer font-mono"
-            title="Open SQLite Query Terminal"
+            title="Open Data Inspector"
           >
             <Database className="w-3.5 h-3.5 text-blue-400" />
-            <span>SQLite Terminal</span>
+            <span>DB Inspector</span>
           </button>
         </div>
 

@@ -38,7 +38,7 @@ Commission / Agent: ${formatAED(sale.commission_amount)}
 NET AMOUNT PAID:    ${formatAED(sale.net_amount)}
 ========================================
 Thank you for adventuring with DXA!
-SQLite Transaction ID: ${sale.id}
+Transaction ID: ${sale.id}
     `.trim();
 
     navigator.clipboard.writeText(text);
@@ -137,7 +137,7 @@ SQLite Transaction ID: ${sale.id}
             {/* Footer */}
             <div className="text-center pt-3 border-t border-dashed border-stone-300 text-[10px] text-stone-400">
               <p>Thank you for adventuring with Desert Xtreme!</p>
-              <p className="font-mono text-[9px] mt-0.5">SQLite DB Tx #{sale.id}</p>
+              <p className="font-mono text-[9px] mt-0.5">Transaction ID #{sale.id}</p>
             </div>
           </div>
         </div>

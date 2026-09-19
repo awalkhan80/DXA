@@ -15,25 +15,47 @@ import {
   B2BPaymentRecord,
   B2BPaymentFormData,
   ExpenseMetrics,
-  CashFlowSummary
+  CashFlowSummary,
+  Vehicle,
+  Customer,
+  PettyCashTransfer,
+  CreditHistoryRecord,
+  PendingExpenseRecord,
+  ExpensePaymentRecord
 } from '../types';
 
-const DB_STORAGE_KEY = 'dxa_sqlite_database_v3';
-const LEGACY_STORAGE_KEY = 'dxa_sqlite_database_v2';
+const DB_STORAGE_KEY = 'dxa_sqlite_database_v4';
+const LEGACY_STORAGE_KEY = 'dxa_sqlite_database_v3';
 const V1_STORAGE_KEY = 'dxa_sqlite_database_v1';
 
 const INITIAL_COUNTERS: string[] = [
-  'DXA Sale Counter',
-  'Photo Sale',
-  'Juice Counter Sale',
-  'Supermarket Sale',
-  'Popcorn'
+  'Quad Bike Counter',
+  'Buggy Counter',
+  'Photo Counter',
+  'Cafe Counter',
+  'Juice Counter',
+  'Popcorn Counter',
+  'Supermarket Counter',
+  'Other'
 ];
 
 const INITIAL_PAYMENT_METHODS: string[] = [
   'Cash',
   'Card',
+  'Credit',
   'B2B'
+];
+
+const INITIAL_VEHICLES: Array<{ vehicle_id: string; vehicle_name: string; vehicle_category: string }> = [
+  { vehicle_id: 'QB-S01', vehicle_name: 'Quad Bike Single Seater', vehicle_category: 'Quad Bikes' },
+  { vehicle_id: 'QB-D01', vehicle_name: 'Quad Bike Double Seater', vehicle_category: 'Quad Bikes' },
+  { vehicle_id: 'POL-2S', vehicle_name: 'Polaris 2 Seater', vehicle_category: 'Polaris Vehicles' },
+  { vehicle_id: 'POL-4S', vehicle_name: 'Polaris 4 Seater', vehicle_category: 'Polaris Vehicles' },
+  { vehicle_id: 'POL-BK', vehicle_name: 'Polaris Bike', vehicle_category: 'Polaris Vehicles' },
+  { vehicle_id: 'CAN-2S', vehicle_name: 'Can-Am 2 Seater', vehicle_category: 'Can-Am Vehicles' },
+  { vehicle_id: 'CAN-4S', vehicle_name: 'Can-Am 4 Seater', vehicle_category: 'Can-Am Vehicles' },
+  { vehicle_id: 'OTH-Y350', vehicle_name: 'Yamaha 350cc', vehicle_category: 'Other Vehicles' },
+  { vehicle_id: 'OTH-[#700]', vehicle_name: 'Raptor 700', vehicle_category: 'Other Vehicles' }
 ];
 
 // Tour Guides who receive commissions
@@ -51,7 +73,7 @@ const INITIAL_B2B_CUSTOMERS: string[] = [
   'Desert Tiger'
 ];
 
-// Step 2: Seed Categories from specifications
+// Seed Categories from specifications
 const INITIAL_EXPENSE_CATEGORIES: string[] = [
   'Fuel & Maintenance',
   'Staff Salaries',
@@ -64,7 +86,7 @@ const INITIAL_EXPENSE_CATEGORIES: string[] = [
   'Miscellaneous'
 ];
 
-// Step 2: Seed Cash Sources from specifications
+// Seed Cash Sources from specifications
 const INITIAL_CASH_SOURCES: string[] = [
   'Daily Sales Cash',
   'Owner Capital',
@@ -84,6 +106,12 @@ interface StoredDBState {
   capital_injections: CapitalInjectionRecord[];
   expense_categories: ExpenseCategory[];
   cash_sources: CashSource[];
+  vehicles: Vehicle[];
+  customers: Customer[];
+  petty_cash_transfers: PettyCashTransfer[];
+  credit_history: CreditHistoryRecord[];
+  pending_expenses: PendingExpenseRecord[];
+  expense_payments: ExpensePaymentRecord[];
   lastSaleId: number;
   lastCounterId: number;
   lastPaymentMethodId: number;
@@ -94,6 +122,12 @@ interface StoredDBState {
   lastCapitalId: number;
   lastExpenseCategoryId: number;
   lastCashSourceId: number;
+  lastVehicleId: number;
+  lastCustomerId: number;
+  lastPettyCashId: number;
+  lastCreditHistoryId: number;
+  lastPendingExpenseId: number;
+  lastExpensePaymentId: number;
 }
 
 // Zeroed initial sales (clean slate)
@@ -117,12 +151,20 @@ class SQLiteDatabaseManager {
   }
 
   private loadState(): StoredDBState {
-    // Try to load v3 first
+    const defaultVehicles: Vehicle[] = INITIAL_VEHICLES.map((v, idx) => ({
+      id: idx + 1,
+      vehicle_id: v.vehicle_id,
+      vehicle_name: v.vehicle_name,
+      vehicle_category: v.vehicle_category,
+      status: 'Available',
+      created_at: new Date().toISOString()
+    }));
+
     try {
-      const stored = localStorage.getItem(DB_STORAGE_KEY);
+      const stored = localStorage.getItem(DB_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.counters && parsed.payment_methods && parsed.expense_categories && parsed.cash_sources) {
+        if (parsed.counters && parsed.payment_methods) {
           // Ensure B2B customers exist
           if (!Array.isArray(parsed.b2b_customers) || parsed.b2b_customers.length === 0) {
             parsed.b2b_customers = INITIAL_B2B_CUSTOMERS.map((name, idx) => ({
@@ -143,6 +185,18 @@ class SQLiteDatabaseManager {
             parsed.lastTourGuideId = parsed.tour_guides.length;
           }
 
+          // Ensure Vehicles exist
+          if (!Array.isArray(parsed.vehicles) || parsed.vehicles.length === 0) {
+            parsed.vehicles = defaultVehicles;
+            parsed.lastVehicleId = defaultVehicles.length;
+          }
+
+          if (!Array.isArray(parsed.customers)) parsed.customers = [];
+          if (!Array.isArray(parsed.petty_cash_transfers)) parsed.petty_cash_transfers = [];
+          if (!Array.isArray(parsed.credit_history)) parsed.credit_history = [];
+          if (!Array.isArray(parsed.pending_expenses)) parsed.pending_expenses = [];
+          if (!Array.isArray(parsed.expense_payments)) parsed.expense_payments = [];
+
           // Ensure arrays are initialized
           if (!Array.isArray(parsed.sales)) parsed.sales = [];
           if (!Array.isArray(parsed.expenses)) parsed.expenses = [];
@@ -153,7 +207,7 @@ class SQLiteDatabaseManager {
         }
       }
     } catch (err) {
-      console.warn('Could not load stored v3 database state:', err);
+      console.warn('Could not load stored database state:', err);
     }
 
     // Attempt migration of master setup only from previous version (counters, guides, b2b clients)
@@ -260,6 +314,12 @@ class SQLiteDatabaseManager {
       capital_injections: [],
       expense_categories: defaultExpenseCategories,
       cash_sources: defaultCashSources,
+      vehicles: defaultVehicles,
+      customers: [],
+      petty_cash_transfers: [],
+      credit_history: [],
+      pending_expenses: [],
+      expense_payments: [],
       lastSaleId: 0,
       lastCounterId: defaultCounters.length,
       lastPaymentMethodId: defaultPaymentMethods.length,
@@ -269,7 +329,13 @@ class SQLiteDatabaseManager {
       lastExpenseId: 0,
       lastCapitalId: 0,
       lastExpenseCategoryId: defaultExpenseCategories.length,
-      lastCashSourceId: defaultCashSources.length
+      lastCashSourceId: defaultCashSources.length,
+      lastVehicleId: defaultVehicles.length,
+      lastCustomerId: 0,
+      lastPettyCashId: 0,
+      lastCreditHistoryId: 0,
+      lastPendingExpenseId: 0,
+      lastExpensePaymentId: 0
     };
 
     this.saveState(initialState);
@@ -676,11 +742,25 @@ class SQLiteDatabaseManager {
 
     const newSaleId = ++this.state.lastSaleId;
     const isB2B = data.sale_type === 'B2B' || data.payment_method?.toUpperCase().includes('B2B');
+    const isCredit = data.is_credit || data.payment_method === 'Credit' || data.payment_method === 'B2B';
     const autoSaleType: 'B2B' | 'B2C' = data.sale_type || (isB2B ? 'B2B' : 'B2C');
     
     // Auto generate reference if empty
     const autoDate = (data.sale_date || now.toISOString().split('T')[0]).replace(/-/g, '');
     const finalRef = data.reference_no?.trim() || `DXA-${autoSaleType}-${autoDate}-${String(newSaleId).padStart(4, '0')}`;
+
+    // Bank charges calculation for card transactions
+    let bankChargePct = 0;
+    let bankChargeAmt = 0;
+    let netReceivedAmt = net;
+
+    if (data.payment_method === 'Card') {
+      bankChargePct = data.bank_charge_percentage !== undefined ? Number(data.bank_charge_percentage) : 5;
+      bankChargeAmt = data.bank_charge_amount !== undefined 
+        ? Number(data.bank_charge_amount) 
+        : Math.round((gross * (bankChargePct / 100)) * 100) / 100;
+      netReceivedAmt = Math.round((net - bankChargeAmt) * 100) / 100;
+    }
 
     const newSale: SaleRecord = {
       id: newSaleId,
@@ -695,11 +775,66 @@ class SQLiteDatabaseManager {
       customer_name: data.customer_name.trim() || null,
       guide_name: data.guide_name?.trim() || null,
       sale_type: autoSaleType,
+      duration: data.duration || null,
+      vehicle_id: data.vehicle_id || null,
+      vehicle_name: data.vehicle_name || null,
+      vehicle_category: data.vehicle_category || null,
+      ride_location: data.ride_location || 'Inside',
+      contact_number: data.contact_number?.trim() || null,
+      is_credit: isCredit ? 1 : 0,
+      bank_charge_percentage: bankChargePct,
+      bank_charge_amount: bankChargeAmt,
+      net_received_amount: netReceivedAmt,
       notes: data.notes.trim() || null,
       created_at
     };
 
     this.state.sales.unshift(newSale);
+
+    // Also auto-add customer to master data if name provided
+    if (data.customer_name?.trim()) {
+      const existingCust = (this.state.customers || []).find(
+        (c) => c.customer_name.toLowerCase() === data.customer_name.trim().toLowerCase()
+      );
+      if (!existingCust) {
+        if (!this.state.customers) this.state.customers = [];
+        this.state.lastCustomerId = (this.state.lastCustomerId || 0) + 1;
+        this.state.customers.push({
+          id: this.state.lastCustomerId,
+          customer_name: data.customer_name.trim(),
+          contact_number: data.contact_number?.trim() || null,
+          company_name: isB2B ? data.customer_name.trim() : null,
+          created_at: newSale.created_at
+        });
+      }
+    }
+
+    // Auto-create Credit History Record if sale is on Credit
+    if (isCredit && data.customer_name?.trim()) {
+      if (!this.state.credit_history) this.state.credit_history = [];
+      this.state.lastCreditHistoryId = (this.state.lastCreditHistoryId || 0) + 1;
+      
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+      
+      this.state.credit_history.unshift({
+        id: this.state.lastCreditHistoryId,
+        customer_name: data.customer_name.trim(),
+        company_name: isB2B ? data.customer_name.trim() : null,
+        invoice_number: finalRef,
+        sale_id: newSaleId,
+        credit_amount: net,
+        total_amount: net,
+        invoice_date: newSale.sale_date,
+        due_date: dueDate.toISOString().split('T')[0],
+        paid_amount: 0,
+        remaining_amount: net,
+        status: 'Pending',
+        notes: `Auto-generated from Credit Sale ${finalRef}`,
+        created_at
+      });
+    }
+
     this.saveState();
     return newSale;
   }
@@ -720,15 +855,33 @@ class SQLiteDatabaseManager {
 
     const net = Math.round((gross - commission) * 100) / 100;
 
-    const isB2B = data.sale_type === 'B2B' || (data.payment_method || existing.payment_method)?.toUpperCase().includes('B2B');
+    const pm = data.payment_method !== undefined ? data.payment_method : existing.payment_method;
+    const isB2B = data.sale_type === 'B2B' || pm.toUpperCase().includes('B2B');
+    const isCredit = data.is_credit !== undefined ? data.is_credit : (pm === 'Credit' || pm === 'B2B');
     const autoSaleType: 'B2B' | 'B2C' = data.sale_type || (isB2B ? 'B2B' : 'B2C');
+
+    let bankChargePct = existing.bank_charge_percentage || 0;
+    let bankChargeAmt = existing.bank_charge_amount || 0;
+    let netReceivedAmt = existing.net_received_amount || net;
+
+    if (pm === 'Card') {
+      bankChargePct = data.bank_charge_percentage !== undefined ? Number(data.bank_charge_percentage) : (existing.bank_charge_percentage || 5);
+      bankChargeAmt = data.bank_charge_amount !== undefined 
+        ? Number(data.bank_charge_amount) 
+        : Math.round((gross * (bankChargePct / 100)) * 100) / 100;
+      netReceivedAmt = Math.round((net - bankChargeAmt) * 100) / 100;
+    } else {
+      bankChargePct = 0;
+      bankChargeAmt = 0;
+      netReceivedAmt = net;
+    }
 
     const updated: SaleRecord = {
       ...existing,
       sale_date: data.sale_date !== undefined ? data.sale_date : existing.sale_date,
       sale_time: data.sale_time !== undefined ? data.sale_time : existing.sale_time,
       sale_counter: data.sale_counter !== undefined ? data.sale_counter : existing.sale_counter,
-      payment_method: data.payment_method !== undefined ? data.payment_method : existing.payment_method,
+      payment_method: pm,
       gross_amount: Math.round(gross * 100) / 100,
       commission_amount: Math.round(commission * 100) / 100,
       net_amount: net,
@@ -736,6 +889,16 @@ class SQLiteDatabaseManager {
       customer_name: data.customer_name !== undefined ? data.customer_name.trim() || null : existing.customer_name,
       guide_name: data.guide_name !== undefined ? data.guide_name.trim() || null : existing.guide_name,
       sale_type: autoSaleType,
+      duration: data.duration !== undefined ? data.duration : existing.duration,
+      vehicle_id: data.vehicle_id !== undefined ? data.vehicle_id : existing.vehicle_id,
+      vehicle_name: data.vehicle_name !== undefined ? data.vehicle_name : existing.vehicle_name,
+      vehicle_category: data.vehicle_category !== undefined ? data.vehicle_category : existing.vehicle_category,
+      ride_location: data.ride_location !== undefined ? data.ride_location : existing.ride_location,
+      contact_number: data.contact_number !== undefined ? data.contact_number.trim() || null : existing.contact_number,
+      is_credit: isCredit ? 1 : 0,
+      bank_charge_percentage: bankChargePct,
+      bank_charge_amount: bankChargeAmt,
+      net_received_amount: netReceivedAmt,
       notes: data.notes !== undefined ? data.notes.trim() || null : existing.notes
     };
 
@@ -1074,6 +1237,552 @@ class SQLiteDatabaseManager {
   }
 
   // ==========================================
+  // --- VEHICLES CRUD ---
+  // ==========================================
+  public getVehicles(activeOnly: boolean = false): Vehicle[] {
+    if (!Array.isArray(this.state.vehicles)) {
+      this.state.vehicles = [];
+    }
+    if (activeOnly) {
+      return this.state.vehicles.filter((v) => v.status !== 'Inactive');
+    }
+    return [...this.state.vehicles];
+  }
+
+  public addVehicle(data: {
+    vehicle_id: string;
+    vehicle_name: string;
+    vehicle_category: string;
+    status?: 'Available' | 'In Use' | 'Maintenance' | 'Inactive';
+    notes?: string;
+  }): Vehicle {
+    const vId = data.vehicle_id.trim();
+    const vName = data.vehicle_name.trim();
+    const vCat = data.vehicle_category.trim();
+
+    if (!vId || !vName || !vCat) {
+      throw new Error('Vehicle Code, Name, and Category are required');
+    }
+
+    if (!Array.isArray(this.state.vehicles)) this.state.vehicles = [];
+    if (this.state.vehicles.some((v) => v.vehicle_id.toLowerCase() === vId.toLowerCase())) {
+      throw new Error(`Vehicle ID "${vId}" already exists`);
+    }
+
+    this.state.lastVehicleId = (this.state.lastVehicleId || 0) + 1;
+    const now = new Date().toISOString();
+
+    const newVehicle: Vehicle = {
+      id: this.state.lastVehicleId,
+      vehicle_id: vId,
+      vehicle_name: vName,
+      vehicle_category: vCat,
+      status: data.status || 'Available',
+      notes: data.notes?.trim() || null,
+      created_at: now
+    };
+
+    this.state.vehicles.push(newVehicle);
+    this.saveState();
+    return newVehicle;
+  }
+
+  public updateVehicle(id: number, data: Partial<Vehicle>): Vehicle {
+    if (!Array.isArray(this.state.vehicles)) this.state.vehicles = [];
+    const idx = this.state.vehicles.findIndex((v) => v.id === id);
+    if (idx === -1) throw new Error(`Vehicle #${id} not found`);
+
+    const updated: Vehicle = {
+      ...this.state.vehicles[idx],
+      ...data
+    };
+
+    this.state.vehicles[idx] = updated;
+    this.saveState();
+    return updated;
+  }
+
+  public deleteVehicle(id: number): boolean {
+    if (!Array.isArray(this.state.vehicles)) return false;
+    const before = this.state.vehicles.length;
+    this.state.vehicles = this.state.vehicles.filter((v) => v.id !== id);
+    if (this.state.vehicles.length !== before) {
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // --- CUSTOMERS MASTER & REPORTING ---
+  // ==========================================
+  public getCustomers(): Customer[] {
+    return [...(this.state.customers || [])];
+  }
+
+  public addCustomer(data: { customer_name: string; contact_number?: string; email?: string; company_name?: string; notes?: string }): Customer {
+    const name = data.customer_name.trim();
+    if (!name) throw new Error('Customer Name is required');
+
+    if (!Array.isArray(this.state.customers)) this.state.customers = [];
+    const existing = this.state.customers.find((c) => c.customer_name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing;
+
+    this.state.lastCustomerId = (this.state.lastCustomerId || 0) + 1;
+    const newCust: Customer = {
+      id: this.state.lastCustomerId,
+      customer_name: name,
+      contact_number: data.contact_number?.trim() || null,
+      email: data.email?.trim() || null,
+      company_name: data.company_name?.trim() || null,
+      notes: data.notes?.trim() || null,
+      created_at: new Date().toISOString()
+    };
+
+    this.state.customers.push(newCust);
+    this.saveState();
+    return newCust;
+  }
+
+  public deleteCustomer(id: number): boolean {
+    if (!Array.isArray(this.state.customers)) return false;
+    const before = this.state.customers.length;
+    this.state.customers = this.state.customers.filter((c) => c.id !== id);
+    if (this.state.customers.length !== before) {
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // --- PETTY CASH TRANSFER SYSTEM ---
+  // ==========================================
+  public getPettyCashTransfers(filter?: { startDate?: string; endDate?: string; counter?: string }): PettyCashTransfer[] {
+    let list = [...(this.state.petty_cash_transfers || [])];
+
+    if (filter?.startDate) {
+      list = list.filter((t) => t.transfer_date >= filter.startDate!);
+    }
+    if (filter?.endDate) {
+      list = list.filter((t) => t.transfer_date <= filter.endDate!);
+    }
+    if (filter?.counter && filter.counter !== 'ALL') {
+      list = list.filter((t) => t.transfer_from_counter === filter.counter || t.transfer_to_counter === filter.counter);
+    }
+
+    return list.sort((a, b) => b.transfer_date.localeCompare(a.transfer_date) || b.transfer_time.localeCompare(a.transfer_time));
+  }
+
+  public addPettyCashTransfer(data: {
+    transfer_type?: string;
+    transfer_from_counter?: string;
+    transfer_to_counter?: string;
+    transferred_to?: string;
+    amount: number;
+    reason?: string;
+    notes?: string;
+    created_by?: string;
+    transfer_date?: string;
+    transfer_time?: string;
+  }): PettyCashTransfer {
+    const amt = Number(data.amount) || 0;
+    if (amt <= 0) throw new Error('Transfer amount must be greater than zero');
+    const from = data.transfer_from_counter || 'Daily Cash Drawer';
+    const to = data.transfer_to_counter || data.transferred_to || 'Petty Cash Box';
+    const reasonText = data.reason?.trim() || data.notes?.trim() || 'Petty Cash Transfer';
+
+    const now = new Date();
+    const created_at = `${now.toISOString().split('T')[0]} ${now.toTimeString().split(' ')[0]}`;
+
+    if (!Array.isArray(this.state.petty_cash_transfers)) this.state.petty_cash_transfers = [];
+    this.state.lastPettyCashId = (this.state.lastPettyCashId || 0) + 1;
+
+    const newTransfer: PettyCashTransfer = {
+      id: this.state.lastPettyCashId,
+      transfer_type: data.transfer_type || 'Transfer',
+      transfer_date: data.transfer_date || now.toISOString().split('T')[0],
+      transfer_time: data.transfer_time || now.toTimeString().split(' ')[0],
+      transfer_from_counter: from,
+      transfer_to_counter: to,
+      transferred_to: to,
+      amount: Math.round(amt * 100) / 100,
+      reason: reasonText,
+      notes: data.notes || null,
+      created_by: data.created_by?.trim() || 'Admin / Cashier',
+      status: 'Transferred',
+      returned_amount: 0,
+      used_amount: 0,
+      remaining_balance: Math.round(amt * 100) / 100,
+      created_at
+    };
+
+    this.state.petty_cash_transfers.unshift(newTransfer);
+    this.saveState();
+    return newTransfer;
+  }
+
+  public returnPettyCash(id: number, returnedAmount: number, usedAmount: number = 0, returnNotes?: string): PettyCashTransfer {
+    if (!Array.isArray(this.state.petty_cash_transfers)) this.state.petty_cash_transfers = [];
+    const idx = this.state.petty_cash_transfers.findIndex((t) => t.id === id);
+    if (idx === -1) throw new Error(`Petty Cash Transfer record #${id} not found`);
+
+    const record = this.state.petty_cash_transfers[idx];
+    const retAmt = Number(returnedAmount) || 0;
+    const usdAmt = Number(usedAmount) || 0;
+
+    if (retAmt < 0 || usdAmt < 0) throw new Error('Amounts cannot be negative');
+    if (retAmt + usdAmt > record.amount) {
+      throw new Error(`Returned amount (${retAmt}) + Used amount (${usdAmt}) exceeds initial transfer (${record.amount})`);
+    }
+
+    const remBalance = Math.round((record.amount - usdAmt - retAmt) * 100) / 100;
+    let newStatus: 'Transferred' | 'Partially Returned' | 'Fully Returned' = 'Partially Returned';
+    if (remBalance === 0 || retAmt + usdAmt === record.amount) {
+      newStatus = 'Fully Returned';
+    }
+
+    const updated: PettyCashTransfer = {
+      ...record,
+      returned_amount: Math.round(retAmt * 100) / 100,
+      used_amount: Math.round(usdAmt * 100) / 100,
+      remaining_balance: remBalance,
+      status: newStatus,
+      return_date: new Date().toISOString().split('T')[0],
+      notes: returnNotes ? `${record.notes || ''} [Returned: ${retAmt}, Used: ${usdAmt}] ${returnNotes}` : record.notes
+    };
+
+    this.state.petty_cash_transfers[idx] = updated;
+    this.saveState();
+    return updated;
+  }
+
+  public deletePettyCashTransfer(id: number): boolean {
+    if (!Array.isArray(this.state.petty_cash_transfers)) return false;
+    const before = this.state.petty_cash_transfers.length;
+    this.state.petty_cash_transfers = this.state.petty_cash_transfers.filter((t) => t.id !== id);
+    if (this.state.petty_cash_transfers.length !== before) {
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // --- CREDIT HISTORY MODULE ---
+  // ==========================================
+  public getCreditHistory(filter?: {
+    customerName?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): CreditHistoryRecord[] {
+    let list = [...(this.state.credit_history || [])];
+
+    if (filter?.status && filter.status !== 'ALL') {
+      list = list.filter((c) => c.status === filter.status);
+    }
+    if (filter?.customerName && filter.customerName !== 'ALL') {
+      const q = filter.customerName.toLowerCase().trim();
+      list = list.filter((c) => (c.customer_name && c.customer_name.toLowerCase().includes(q)) || (c.company_name && c.company_name.toLowerCase().includes(q)));
+    }
+    if (filter?.startDate) {
+      list = list.filter((c) => (c.invoice_date || c.credit_date || '') >= filter.startDate!);
+    }
+    if (filter?.endDate) {
+      list = list.filter((c) => (c.invoice_date || c.credit_date || '') <= filter.endDate!);
+    }
+
+    return list.sort((a, b) => (b.invoice_date || b.credit_date || '').localeCompare(a.invoice_date || a.credit_date || ''));
+  }
+
+  public addCreditRecord(data: {
+    customer_name: string;
+    company_name?: string;
+    invoice_number: string;
+    credit_amount: number;
+    invoice_date?: string;
+    due_date?: string;
+    notes?: string;
+  }): CreditHistoryRecord {
+    const amt = Number(data.credit_amount) || 0;
+    if (amt <= 0) throw new Error('Credit amount must be greater than zero');
+    if (!data.customer_name?.trim()) throw new Error('Customer name is required');
+
+    const now = new Date();
+    const created_at = `${now.toISOString().split('T')[0]} ${now.toTimeString().split(' ')[0]}`;
+
+    if (!Array.isArray(this.state.credit_history)) this.state.credit_history = [];
+    this.state.lastCreditHistoryId = (this.state.lastCreditHistoryId || 0) + 1;
+
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 30);
+
+    const newRecord: CreditHistoryRecord = {
+      id: this.state.lastCreditHistoryId,
+      customer_name: data.customer_name.trim(),
+      company_name: data.company_name?.trim() || null,
+      invoice_number: data.invoice_number?.trim() || `INV-${this.state.lastCreditHistoryId}`,
+      credit_amount: Math.round(amt * 100) / 100,
+      total_amount: Math.round(amt * 100) / 100,
+      invoice_date: data.invoice_date || now.toISOString().split('T')[0],
+      due_date: data.due_date || defaultDueDate.toISOString().split('T')[0],
+      paid_amount: 0,
+      remaining_amount: Math.round(amt * 100) / 100,
+      status: 'Pending',
+      notes: data.notes?.trim() || null,
+      created_at
+    };
+
+    this.state.credit_history.unshift(newRecord);
+    this.saveState();
+    return newRecord;
+  }
+
+  public payCreditRecord(
+    id: number,
+    paymentAmount: number,
+    paymentMethod: string = 'Cash',
+    referenceNo?: string,
+    notes?: string
+  ): CreditHistoryRecord {
+    if (!Array.isArray(this.state.credit_history)) this.state.credit_history = [];
+    const idx = this.state.credit_history.findIndex((c) => c.id === id);
+    if (idx === -1) throw new Error(`Credit record #${id} not found`);
+
+    const record = this.state.credit_history[idx];
+    const payAmt = Number(paymentAmount) || 0;
+    if (payAmt <= 0) throw new Error('Payment amount must be greater than zero');
+    if (payAmt > record.remaining_amount) {
+      throw new Error(`Payment amount (${payAmt}) cannot exceed remaining balance (${record.remaining_amount})`);
+    }
+
+    const totalAmt = record.total_amount || record.credit_amount || 0;
+    const newPaid = Math.round((record.paid_amount + payAmt) * 100) / 100;
+    const newRemaining = Math.max(0, Math.round((totalAmt - newPaid) * 100) / 100);
+    let newStatus: 'Pending' | 'Partially Paid' | 'Paid' = newRemaining === 0 ? 'Paid' : 'Partially Paid';
+
+    const updated: CreditHistoryRecord = {
+      ...record,
+      paid_amount: newPaid,
+      remaining_amount: newRemaining,
+      status: newStatus,
+      last_payment_date: new Date().toISOString().split('T')[0],
+      notes: notes ? `${record.notes || ''} [Paid: ${payAmt} via ${paymentMethod}] ${notes}` : record.notes
+    };
+
+    this.state.credit_history[idx] = updated;
+
+    const now = new Date();
+    // Also record B2B / Recovery Payment Receipt for cash drawer tracking!
+    this.addB2BPayment({
+      payment_date: now.toISOString().split('T')[0],
+      payment_time: now.toTimeString().split(' ')[0],
+      customer_name: record.customer_name,
+      amount: payAmt,
+      payment_method: paymentMethod,
+      reference_no: referenceNo || `CR-PAY-${record.invoice_number || record.reference_no || id}`,
+      received_by: 'Cashier / Admin',
+      notes: `Settlement for Credit Invoice ${record.invoice_number || record.reference_no || id}`
+    });
+
+    this.saveState();
+    return updated;
+  }
+
+  public settleCreditPayment(
+    id: number,
+    paymentAmount: number,
+    paymentMethod: string = 'Cash',
+    notes?: string
+  ): CreditHistoryRecord {
+    return this.payCreditRecord(id, paymentAmount, paymentMethod, undefined, notes);
+  }
+
+  public deleteCreditRecord(id: number): boolean {
+    if (!Array.isArray(this.state.credit_history)) return false;
+    const before = this.state.credit_history.length;
+    this.state.credit_history = this.state.credit_history.filter((c) => c.id !== id);
+    if (this.state.credit_history.length !== before) {
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
+  // --- PENDING EXPENSES & EXPENSE PAYMENTS ---
+  // ==========================================
+  public getPendingExpenses(filter?: {
+    supplierName?: string;
+    category?: string;
+    status?: string;
+  }): PendingExpenseRecord[] {
+    let list = [...(this.state.pending_expenses || [])];
+
+    if (filter?.status && filter.status !== 'ALL') {
+      list = list.filter((p) => p.status === filter.status);
+    }
+    if (filter?.category && filter.category !== 'ALL') {
+      list = list.filter((p) => p.expense_category === filter.category);
+    }
+    if (filter?.supplierName && filter.supplierName.trim()) {
+      const q = filter.supplierName.toLowerCase().trim();
+      list = list.filter((p) => {
+        const s = p.supplier_name || p.vendor_name || p.expense_title || '';
+        return s.toLowerCase().includes(q);
+      });
+    }
+
+    return list.sort((a, b) => (b.created_date || b.created_at || '').localeCompare(a.created_date || a.created_at || ''));
+  }
+
+  public addPendingExpense(data: {
+    expense_title?: string;
+    supplier_name?: string;
+    vendor_name?: string;
+    expense_category: string;
+    description?: string;
+    amount: number | string;
+    created_date?: string;
+    due_date?: string;
+    notes?: string;
+  }): PendingExpenseRecord {
+    const amt = Number(data.amount) || 0;
+    if (amt <= 0) throw new Error('Expense amount must be greater than zero');
+    const supplier = data.supplier_name?.trim() || data.vendor_name?.trim() || data.expense_title?.trim() || 'Supplier';
+    if (!data.expense_category?.trim()) throw new Error('Expense category is required');
+
+    const now = new Date();
+    const created_at = `${now.toISOString().split('T')[0]} ${now.toTimeString().split(' ')[0]}`;
+
+    if (!Array.isArray(this.state.pending_expenses)) this.state.pending_expenses = [];
+    this.state.lastPendingExpenseId = (this.state.lastPendingExpenseId || 0) + 1;
+
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 15);
+
+    const title = data.expense_title?.trim() || supplier;
+
+    const newPending: PendingExpenseRecord = {
+      id: this.state.lastPendingExpenseId,
+      expense_title: title,
+      supplier_name: supplier,
+      vendor_name: supplier,
+      expense_category: data.expense_category.trim(),
+      description: data.description?.trim() || title,
+      amount: Math.round(amt * 100) / 100,
+      created_date: data.created_date || now.toISOString().split('T')[0],
+      due_date: data.due_date || defaultDueDate.toISOString().split('T')[0],
+      status: 'Unpaid',
+      paid_amount: 0,
+      remaining_amount: Math.round(amt * 100) / 100,
+      notes: data.notes?.trim() || null,
+      created_at
+    };
+
+    this.state.pending_expenses.unshift(newPending);
+    this.saveState();
+    return newPending;
+  }
+
+  public payPendingExpense(
+    id: number,
+    payAmountOrData: number | { payment_date?: string; payment_method: string; paid_amount: number; reference_no?: string; notes?: string },
+    paymentMethodOrSource?: string,
+    notesOrRef?: string
+  ): { pending: PendingExpenseRecord; actualExpense: ExpenseRecord } {
+    if (!Array.isArray(this.state.pending_expenses)) this.state.pending_expenses = [];
+    const idx = this.state.pending_expenses.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error(`Pending Expense #${id} not found`);
+
+    const record = this.state.pending_expenses[idx];
+    
+    let payAmt = 0;
+    let payMethod = 'Daily Sales Cash';
+    let payNotes = '';
+    let payDate = new Date().toISOString().split('T')[0];
+
+    if (typeof payAmountOrData === 'object' && payAmountOrData !== null) {
+      payAmt = Number(payAmountOrData.paid_amount) || 0;
+      payMethod = payAmountOrData.payment_method || 'Daily Sales Cash';
+      payNotes = payAmountOrData.notes || '';
+      payDate = payAmountOrData.payment_date || payDate;
+    } else {
+      payAmt = Number(payAmountOrData) || 0;
+      payMethod = paymentMethodOrSource || 'Daily Sales Cash';
+      payNotes = notesOrRef || '';
+    }
+
+    if (payAmt <= 0) throw new Error('Payment amount must be greater than zero');
+    const currentRemaining = record.remaining_amount ?? record.amount;
+    if (payAmt > currentRemaining) {
+      throw new Error(`Payment amount (${payAmt}) exceeds remaining balance (${currentRemaining})`);
+    }
+
+    const currentPaid = record.paid_amount ?? 0;
+    const newPaid = Math.round((currentPaid + payAmt) * 100) / 100;
+    const newRemaining = Math.max(0, Math.round((record.amount - newPaid) * 100) / 100);
+    const newStatus: 'Unpaid' | 'Partially Paid' | 'Paid' = newRemaining === 0 ? 'Paid' : 'Partially Paid';
+
+    const updatedPending: PendingExpenseRecord = {
+      ...record,
+      paid_amount: newPaid,
+      remaining_amount: newRemaining,
+      status: newStatus
+    };
+
+    this.state.pending_expenses[idx] = updatedPending;
+
+    // Record the actual payment transaction in expense_payments
+    if (!Array.isArray(this.state.expense_payments)) this.state.expense_payments = [];
+    this.state.lastExpensePaymentId = (this.state.lastExpensePaymentId || 0) + 1;
+
+    const pTime = new Date().toTimeString().split(' ')[0];
+
+    const expPaymentRecord: ExpensePaymentRecord = {
+      id: this.state.lastExpensePaymentId,
+      pending_expense_id: id,
+      payment_date: payDate,
+      payment_method: payMethod,
+      paid_amount: payAmt,
+      reference_no: `EXP-PAY-${id}-${Date.now().toString().slice(-4)}`,
+      notes: payNotes || null,
+      created_at: `${payDate} ${pTime}`
+    };
+
+    this.state.expense_payments.push(expPaymentRecord);
+
+    const supplierName = record.supplier_name || record.vendor_name || record.expense_title || 'Supplier';
+
+    // NOW convert this paid portion into an ACTUAL Expense record so it reflects in Cash Flow & Expense Reports!
+    const actualExpense = this.addExpense({
+      expense_date: payDate,
+      expense_time: pTime,
+      expense_category: record.expense_category,
+      expense_source: payMethod,
+      amount: payAmt,
+      paid_to: supplierName,
+      description: `Settlement for Pending Expense #${id} (${supplierName}) - ${record.description || ''}`,
+      reference_no: expPaymentRecord.reference_no || `EXP-PAY-${id}`
+    });
+
+    this.saveState();
+    return { pending: updatedPending, actualExpense };
+  }
+
+  public deletePendingExpense(id: number): boolean {
+    if (!Array.isArray(this.state.pending_expenses)) return false;
+    const before = this.state.pending_expenses.length;
+    this.state.pending_expenses = this.state.pending_expenses.filter((p) => p.id !== id);
+    if (this.state.pending_expenses.length !== before) {
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================
   // --- METRICS & CASH FLOW SUMMARY ---
   // ==========================================
   public getMetrics(filter?: {
@@ -1087,6 +1796,10 @@ class SQLiteDatabaseManager {
     let totalGross = 0;
     let totalCommission = 0;
     let totalNet = 0;
+    let totalCash = 0;
+    let totalCard = 0;
+    let totalCredit = 0;
+    let totalBankCharges = 0;
 
     const counterBreakdown: Record<string, { count: number; gross: number; net: number }> = {};
     const paymentBreakdown: Record<string, { count: number; gross: number; net: number }> = {};
@@ -1103,6 +1816,18 @@ class SQLiteDatabaseManager {
       totalGross += r.gross_amount;
       totalCommission += r.commission_amount;
       totalNet += r.net_amount;
+
+      const method = (r.payment_method || '').toUpperCase();
+      if (method.includes('CASH')) {
+        totalCash += r.gross_amount;
+      } else if (method.includes('CARD')) {
+        totalCard += r.gross_amount;
+        if (r.bank_charge_amount) {
+          totalBankCharges += r.bank_charge_amount;
+        }
+      } else if (method.includes('CREDIT')) {
+        totalCredit += r.gross_amount;
+      }
 
       if (!counterBreakdown[r.sale_counter]) {
         counterBreakdown[r.sale_counter] = { count: 0, gross: 0, net: 0 };
@@ -1123,6 +1848,10 @@ class SQLiteDatabaseManager {
       totalGross: Math.round(totalGross * 100) / 100,
       totalCommission: Math.round(totalCommission * 100) / 100,
       totalNet: Math.round(totalNet * 100) / 100,
+      totalCash: Math.round(totalCash * 100) / 100,
+      totalCard: Math.round(totalCard * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100,
+      totalBankCharges: Math.round(totalBankCharges * 100) / 100,
       transactionCount: records.length,
       counterBreakdown,
       paymentBreakdown
@@ -1177,38 +1906,52 @@ class SQLiteDatabaseManager {
     const expenses = this.getExpenses(filter);
     const capital = this.getCapitalInjections(filter);
     const b2bPayments = this.getB2BPayments(filter);
+    const creditList = this.getCreditHistory(filter);
+    const pendingExpList = this.getPendingExpenses();
 
     let cashSales = 0;
     let cardSales = 0;
+    let creditSales = 0;
     let b2bSales = 0;
     let totalGrossSales = 0;
     let commissionsPaidCash = 0;
+    let bankCharges = 0;
 
     sales.forEach((s) => {
-      totalGrossSales += s.gross_amount;
-      commissionsPaidCash += s.commission_amount;
-      if (s.payment_method === 'Cash') {
-        cashSales += s.gross_amount;
-      } else if (s.payment_method === 'Card') {
-        cardSales += s.gross_amount;
+      const gross = Number(s.gross_amount) || 0;
+      const comm = Number(s.commission_amount) || 0;
+      const pm = (s.payment_method || '').trim().toLowerCase();
+
+      totalGrossSales += gross;
+      commissionsPaidCash += comm;
+      bankCharges += Number(s.bank_charge_amount) || 0;
+
+      if (pm === 'cash') {
+        cashSales += gross;
+      } else if (pm === 'card') {
+        cardSales += gross;
+      } else if (pm === 'credit') {
+        creditSales += gross;
       } else {
-        b2bSales += s.gross_amount;
+        b2bSales += gross;
       }
     });
 
-    const netSalesIncome = totalGrossSales - commissionsPaidCash;
+    const netSalesIncome = totalGrossSales - commissionsPaidCash - bankCharges;
 
     let totalOwnerCapital = 0;
     capital.forEach((c) => {
-      totalOwnerCapital += c.amount;
+      totalOwnerCapital += Number(c.amount) || 0;
     });
 
     let b2bPaymentsReceived = 0;
     let b2bPaymentsCash = 0;
     b2bPayments.forEach((p) => {
-      b2bPaymentsReceived += p.amount;
-      if (p.payment_method === 'Cash') {
-        b2bPaymentsCash += p.amount;
+      const amt = Number(p.amount) || 0;
+      const pm = (p.payment_method || '').trim().toLowerCase();
+      b2bPaymentsReceived += amt;
+      if (pm === 'cash') {
+        b2bPaymentsCash += amt;
       }
     });
 
@@ -1225,6 +1968,20 @@ class SQLiteDatabaseManager {
       }
     });
 
+    let pendingCreditAmount = 0;
+    creditList.forEach((cr) => {
+      if (cr.status !== 'Paid') {
+        pendingCreditAmount += Number(cr.remaining_amount) || 0;
+      }
+    });
+
+    let pendingExpensesAmount = 0;
+    pendingExpList.forEach((pe) => {
+      if (pe.status !== 'Paid') {
+        pendingExpensesAmount += Number(pe.remaining_amount) || 0;
+      }
+    });
+
     // Cash in drawer formula:
     // Physical Cash Collected (Direct Cash Sales + B2B Cash Settlements) + Capital Injected - Commissions Paid (from Cash) - Cash Expenses
     const estimatedCashInDrawer = Math.round((cashSales + b2bPaymentsCash + totalOwnerCapital - commissionsPaidCash - expensesFromCash) * 100) / 100;
@@ -1232,16 +1989,20 @@ class SQLiteDatabaseManager {
     return {
       cashSales: Math.round(cashSales * 100) / 100,
       cardSales: Math.round(cardSales * 100) / 100,
+      creditSales: Math.round(creditSales * 100) / 100,
       b2bSales: Math.round(b2bSales * 100) / 100,
       b2bPaymentsReceived: Math.round(b2bPaymentsReceived * 100) / 100,
       b2bPaymentsCash: Math.round(b2bPaymentsCash * 100) / 100,
       totalGrossSales: Math.round(totalGrossSales * 100) / 100,
       commissionsPaidCash: Math.round(commissionsPaidCash * 100) / 100,
+      bankCharges: Math.round(bankCharges * 100) / 100,
       netSalesIncome: Math.round(netSalesIncome * 100) / 100,
       totalOwnerCapital: Math.round(totalOwnerCapital * 100) / 100,
       expensesFromCash: Math.round(expensesFromCash * 100) / 100,
       expensesFromOther: Math.round(expensesFromOther * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,
+      pendingCreditAmount: Math.round(pendingCreditAmount * 100) / 100,
+      pendingExpensesAmount: Math.round(pendingExpensesAmount * 100) / 100,
       estimatedCashInDrawer
     };
   }
@@ -1390,26 +2151,79 @@ class SQLiteDatabaseManager {
     sale_counter: string;
     transactions: number;
     gross_sales: number;
+    cash_sales: number;
+    card_sales: number;
+    credit_sales: number;
+    bank_charges: number;
+    commission_amount: number;
     net_sales: number;
   }> {
-    const map: Record<string, { transactions: number; gross_sales: number; net_sales: number }> = {};
+    const map: Record<string, {
+      transactions: number;
+      gross_sales: number;
+      cash_sales: number;
+      card_sales: number;
+      credit_sales: number;
+      bank_charges: number;
+      commission_amount: number;
+      net_sales: number;
+    }> = {};
+
+    this.state.counters.forEach((c) => {
+      map[c.counter_name] = {
+        transactions: 0,
+        gross_sales: 0,
+        cash_sales: 0,
+        card_sales: 0,
+        credit_sales: 0,
+        bank_charges: 0,
+        commission_amount: 0,
+        net_sales: 0
+      };
+    });
+
     this.state.sales
       .filter((s) => (!startDate || s.sale_date >= startDate) && (!endDate || s.sale_date <= endDate))
       .forEach((s) => {
         if (!map[s.sale_counter]) {
-          map[s.sale_counter] = { transactions: 0, gross_sales: 0, net_sales: 0 };
+          map[s.sale_counter] = {
+            transactions: 0,
+            gross_sales: 0,
+            cash_sales: 0,
+            card_sales: 0,
+            credit_sales: 0,
+            bank_charges: 0,
+            commission_amount: 0,
+            net_sales: 0
+          };
         }
+        const pm = (s.payment_method || '').toLowerCase();
         map[s.sale_counter].transactions += 1;
         map[s.sale_counter].gross_sales += s.gross_amount;
+        map[s.sale_counter].commission_amount += s.commission_amount;
+        map[s.sale_counter].bank_charges += s.bank_charge_amount || 0;
         map[s.sale_counter].net_sales += s.net_amount;
+
+        if (pm === 'cash') {
+          map[s.sale_counter].cash_sales += s.gross_amount;
+        } else if (pm === 'card') {
+          map[s.sale_counter].card_sales += s.gross_amount;
+        } else if (pm === 'credit') {
+          map[s.sale_counter].credit_sales += s.gross_amount;
+        }
       });
 
     return Object.entries(map).map(([sale_counter, data]) => ({
       sale_counter,
       transactions: data.transactions,
       gross_sales: Math.round(data.gross_sales * 100) / 100,
+      cash_sales: Math.round(data.cash_sales * 100) / 100,
+      card_sales: Math.round(data.card_sales * 100) / 100,
+      credit_sales: Math.round(data.credit_sales * 100) / 100,
+      bank_charges: Math.round(data.bank_charges * 100) / 100,
+      commission_amount: Math.round(data.commission_amount * 100) / 100,
       net_sales: Math.round(data.net_sales * 100) / 100
-    })).sort((a, b) => b.net_sales - a.net_sales);
+    })).sort((a, b) => b.gross_sales - a.gross_sales);
   }
 
   // ==========================================
@@ -1826,16 +2640,28 @@ class SQLiteDatabaseManager {
         capital_injections: Array.isArray(targetState.capital_injections) ? targetState.capital_injections : [],
         expense_categories: Array.isArray(targetState.expense_categories) ? targetState.expense_categories : [],
         cash_sources: Array.isArray(targetState.cash_sources) ? targetState.cash_sources : [],
-        lastSaleId: targetState.lastSaleId || 100,
+        vehicles: Array.isArray(targetState.vehicles) ? targetState.vehicles : INITIAL_VEHICLES.map((v, idx) => ({ id: idx + 1, vehicle_id: v.vehicle_id, vehicle_name: v.vehicle_name, vehicle_category: v.vehicle_category, status: 'Available', created_at: new Date().toISOString() })),
+        customers: Array.isArray(targetState.customers) ? targetState.customers : [],
+        petty_cash_transfers: Array.isArray(targetState.petty_cash_transfers) ? targetState.petty_cash_transfers : [],
+        credit_history: Array.isArray(targetState.credit_history) ? targetState.credit_history : [],
+        pending_expenses: Array.isArray(targetState.pending_expenses) ? targetState.pending_expenses : [],
+        expense_payments: Array.isArray(targetState.expense_payments) ? targetState.expense_payments : [],
+        lastSaleId: targetState.lastSaleId || 0,
         lastCounterId: targetState.lastCounterId || 10,
         lastPaymentMethodId: targetState.lastPaymentMethodId || 10,
         lastB2BCustomerId: targetState.lastB2BCustomerId || 10,
         lastTourGuideId: targetState.lastTourGuideId || 10,
-        lastB2BPaymentId: targetState.lastB2BPaymentId || 10,
-        lastExpenseId: targetState.lastExpenseId || 100,
-        lastCapitalId: targetState.lastCapitalId || 50,
+        lastB2BPaymentId: targetState.lastB2BPaymentId || 0,
+        lastExpenseId: targetState.lastExpenseId || 0,
+        lastCapitalId: targetState.lastCapitalId || 0,
         lastExpenseCategoryId: targetState.lastExpenseCategoryId || 20,
-        lastCashSourceId: targetState.lastCashSourceId || 10
+        lastCashSourceId: targetState.lastCashSourceId || 10,
+        lastVehicleId: targetState.lastVehicleId || INITIAL_VEHICLES.length,
+        lastCustomerId: targetState.lastCustomerId || 0,
+        lastPettyCashId: targetState.lastPettyCashId || 0,
+        lastCreditHistoryId: targetState.lastCreditHistoryId || 0,
+        lastPendingExpenseId: targetState.lastPendingExpenseId || 0,
+        lastExpensePaymentId: targetState.lastExpensePaymentId || 0
       };
 
       this.saveState(this.state);
@@ -1843,7 +2669,7 @@ class SQLiteDatabaseManager {
 
       return {
         success: true,
-        message: `Database restored successfully! (${this.state.sales.length} sales, ${this.state.expenses.length} expenses, ${this.state.capital_injections.length} capital entries)`
+        message: `Database restored successfully! (${this.state.sales.length} sales, ${this.state.expenses.length} expenses, ${this.state.vehicles?.length || 0} vehicles, ${this.state.credit_history?.length || 0} credit history records)`
       };
     } catch (err: any) {
       console.error('Failed to restore database:', err);

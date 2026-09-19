@@ -17,7 +17,11 @@ import {
   LayoutDashboard,
   X,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Car,
+  Users,
+  CreditCard,
+  Clock
 } from 'lucide-react';
 import { SummaryMetrics, ExpenseMetrics, CashFlowSummary } from '../types';
 import { formatAED } from '../lib/utils';
@@ -28,6 +32,11 @@ export type AppView =
   | 'sales-income'
   | 'sales-new'
   | 'sales-history'
+  | 'vehicles-fleet'
+  | 'customers-report'
+  | 'credit-history'
+  | 'petty-cash'
+  | 'pending-expenses'
   | 'expenses-add'
   | 'expenses-history'
   | 'expenses-capital'
@@ -198,6 +207,89 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 }`}>
                   {salesMetrics.transactionCount}
                 </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 2.5: DXA Fleet & Customers */}
+          <div>
+            <div className="px-2.5 pb-1.5 text-[10px] font-black uppercase tracking-wider text-[#FF8A00] flex items-center justify-between">
+              <span>Operations & Fleet</span>
+            </div>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => handleNavClick('vehicles-fleet')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'vehicles-fleet'
+                    ? 'bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white shadow-md font-black border border-amber-300/30'
+                    : 'text-stone-300 hover:bg-stone-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Car className="w-4 h-4 text-orange-400" />
+                  <span>Vehicle Master Fleet</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('customers-report')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'customers-report'
+                    ? 'bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white shadow-md font-black border border-amber-300/30'
+                    : 'text-stone-300 hover:bg-stone-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span>Customer Directory</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('credit-history')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'credit-history'
+                    ? 'bg-gradient-to-r from-purple-800 to-purple-600 text-white shadow-md font-black'
+                    : 'text-stone-300 hover:bg-stone-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CreditCard className="w-4 h-4 text-purple-400" />
+                  <span>Accounts Receivable (B2B Credit)</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('petty-cash')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'petty-cash'
+                    ? 'bg-gradient-to-r from-amber-700 to-amber-500 text-white shadow-md font-black'
+                    : 'text-stone-300 hover:bg-stone-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Wallet className="w-4 h-4 text-amber-400" />
+                  <span>Petty Cash System</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNavClick('pending-expenses')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  currentView === 'pending-expenses'
+                    ? 'bg-gradient-to-r from-rose-800 to-rose-600 text-white shadow-md font-black'
+                    : 'text-stone-300 hover:bg-stone-800/80 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-rose-400" />
+                  <span>Accounts Payable (Expense Credit)</span>
+                </div>
               </button>
             </div>
           </div>
@@ -410,7 +502,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   <Database className="w-4 h-4 text-indigo-400" />
-                  <span>Backup SQLite (.db)</span>
+                  <span>Backup System Data</span>
                 </div>
                 <span className="text-[9px] text-indigo-400 font-mono font-bold">SAVE</span>
               </button>
@@ -465,7 +557,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
               >
                 <Terminal className="w-4 h-4 text-emerald-400" />
-                <span>SQLite DB Console</span>
+                <span>DB Console & Diagnostics</span>
               </button>
             </div>
           </div>

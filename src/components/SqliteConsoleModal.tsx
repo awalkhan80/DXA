@@ -116,10 +116,10 @@ CREATE TABLE payment_methods (
           <div className="flex items-center gap-2.5">
             <Terminal className="w-4 h-4 text-[#06D6A0]" />
             <span className="font-bold text-white text-sm">
-              SQLite Embedded Console • Desert Xtreme Adventure
+              System Database Inspector • Desert Xtreme Adventure
             </span>
             <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-[10px]">
-              sales.db [STEP 1 + STEP 2 ENGINE]
+              database.db [CONNECTED]
             </span>
           </div>
 
@@ -129,7 +129,7 @@ CREATE TABLE payment_methods (
               className="flex items-center gap-1 bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1 rounded text-[11px] transition-colors border border-stone-700 cursor-pointer"
             >
               <Download className="w-3 h-3 text-[#FF6B35]" />
-              <span>Export .SQL</span>
+              <span>Export Backup</span>
             </button>
             <button
               onClick={onClose}

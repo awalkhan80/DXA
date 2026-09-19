@@ -5,8 +5,11 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   Scale, 
-  ShieldCheck,
-  TrendingUp
+  ArrowLeft,
+  RotateCcw,
+  Database,
+  Download,
+  Upload
 } from 'lucide-react';
 import { SummaryMetrics, ExpenseMetrics, CashFlowSummary } from '../types';
 import { formatAED } from '../lib/utils';
@@ -32,6 +35,7 @@ interface HeaderBannerProps {
   onExportSql: () => void;
   onNavigate: (view: NavView) => void;
   customLogo?: string | null;
+  currentView?: NavView;
 }
 
 export const HeaderBanner: React.FC<HeaderBannerProps> = ({
@@ -51,14 +55,29 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
   onExportCsv,
   onExportSql,
   onNavigate,
-  customLogo
+  customLogo,
+  currentView = 'home-dashboard'
 }) => {
+  const isNotHome = currentView !== 'home-dashboard';
+
   return (
-    <header className="bg-[#0B1A30] text-white border-b border-blue-900/60 px-4 sm:px-6 py-3 shadow-md sticky top-0 z-30">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3.5">
+    <header className="bg-[#0F172A] text-slate-100 border-b border-slate-800 px-4 sm:px-6 py-2.5 shadow-md sticky top-0 z-30">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         
-        {/* Left: Brand Identity & Subtitle */}
+        {/* Left: Back Button (if on subpage) & Brand Title */}
         <div className="flex items-center gap-3">
+          {isNotHome && (
+            <button
+              type="button"
+              onClick={() => onNavigate('home-dashboard')}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+              title="Return to Main Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+          )}
+
           <DesertXtremeLogo
             customLogo={customLogo}
             size="md"
@@ -66,40 +85,38 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5 uppercase">
-                <span className="bg-gradient-to-r from-white via-blue-100 to-amber-200 bg-clip-text text-transparent">
-                  Desert Xtreme
-                </span>
-                <span className="text-[#FF6B35] font-extrabold text-xs bg-[#FF6B35]/10 px-1.5 py-0.5 rounded border border-[#FF6B35]/30">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-1.5 uppercase">
+                <span className="text-slate-100">Desert Xtreme</span>
+                <span className="text-[#FF6B35] font-black text-xs bg-[#FF6B35]/15 px-1.5 py-0.5 rounded border border-[#FF6B35]/30">
                   POS
                 </span>
               </h1>
-              <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="tracking-wide">ONLINE</span>
+                <span className="tracking-wide uppercase">Active</span>
               </span>
             </div>
-            <p className="text-[11px] text-blue-200/70 font-medium flex items-center gap-2 mt-0.5">
-              <span>Dubai Tour Operations & Safari Cashier</span>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              Tour Operations & POS Cashier Engine
             </p>
           </div>
         </div>
 
-        {/* Center: Live Financial Snapshot Badges */}
-        <div className="hidden lg:flex items-center gap-3 bg-[#132A4A] border border-blue-800/60 rounded-xl p-1.5 px-3.5 shadow-inner">
+        {/* Center: Live Financial Snapshot */}
+        <div className="hidden xl:flex items-center gap-3 bg-slate-800/80 border border-slate-700/80 rounded-xl p-1.5 px-3.5 shadow-inner">
           {/* Drawer Safe Float */}
           <div 
             onClick={onOpenReconciliation}
-            className="flex items-center gap-2.5 pr-3.5 border-r border-blue-800/60 cursor-pointer hover:opacity-90 transition-opacity"
-            title="Click for Daily Cashier Reconciliation Sheet"
+            className="flex items-center gap-2 pr-3 border-r border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+            title="Click for Safe Reconciliation Audit"
           >
-            <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400 border border-amber-500/30 shrink-0">
+            <div className="w-6 h-6 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-400 border border-amber-500/30 shrink-0">
               <Scale className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Cash in Safe</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Cash In Safe</div>
               <div className="text-xs font-mono font-black text-amber-300">
-                {formatAED(cashFlow.estimatedCashInDrawer)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
+                {formatAED(cashFlow.estimatedCashInDrawer)} <span className="text-[9px] font-normal text-slate-400">AED</span>
               </div>
             </div>
           </div>
@@ -107,16 +124,16 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           {/* Today's Sales */}
           <div 
             onClick={() => onNavigate('sales-history')}
-            className="flex items-center gap-2.5 px-3.5 border-r border-blue-800/60 cursor-pointer hover:opacity-90 transition-opacity"
-            title="View Sales Register"
+            className="flex items-center gap-2 px-3 border-r border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+            title="View Sales Ledger"
           >
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400 border border-emerald-500/30 shrink-0">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/15 flex items-center justify-center text-emerald-400 border border-emerald-500/30 shrink-0">
               <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Sales Today</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Today's Sales</div>
               <div className="text-xs font-mono font-black text-emerald-400">
-                {formatAED(metrics.totalNet)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
+                {formatAED(metrics.totalNet)} <span className="text-[9px] font-normal text-slate-400">AED</span>
               </div>
             </div>
           </div>
@@ -124,23 +141,45 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           {/* Today's Expenses */}
           <div 
             onClick={() => onNavigate('expenses-history')}
-            className="flex items-center gap-2.5 pl-2 cursor-pointer hover:opacity-90 transition-opacity"
-            title="View Expense Register"
+            className="flex items-center gap-2 pl-2 cursor-pointer hover:opacity-90 transition-opacity"
+            title="View Expense Ledger"
           >
-            <div className="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400 border border-rose-500/30 shrink-0">
+            <div className="w-6 h-6 rounded-md bg-rose-500/15 flex items-center justify-center text-rose-400 border border-rose-500/30 shrink-0">
               <ArrowDownRight className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="text-[9px] text-blue-200/70 font-bold uppercase tracking-wider">Expenses Today</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Today's Expenses</div>
               <div className="text-xs font-mono font-black text-rose-400">
-                {formatAED(expenseMetrics.totalExpense)} <span className="text-[10px] font-normal text-blue-300/60">AED</span>
+                {formatAED(expenseMetrics.totalExpense)} <span className="text-[9px] font-normal text-slate-400">AED</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Quick Actions Menu & Direct Buttons */}
+        {/* Right: Restore, Backup & Quick Actions */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Quick Restore Button */}
+          <button
+            type="button"
+            onClick={() => onOpenMasterData('backup')}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-amber-950/80 text-amber-300 hover:text-white border border-amber-500/40 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+            title="Import or Restore Database Backup File"
+          >
+            <Upload className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Restore Data</span>
+          </button>
+
+          {/* Quick Backup Button */}
+          <button
+            type="button"
+            onClick={onBackupDatabase}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white border border-slate-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+            title="Download Full Database Backup (.db)"
+          >
+            <Download className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Backup</span>
+          </button>
+
           {/* Quick Actions Dropdown */}
           <QuickActionsMenu
             onNavigate={onNavigate}
@@ -159,7 +198,7 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           <button
             type="button"
             onClick={onNewSaleClick}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF6B35] to-[#F7931E] hover:brightness-110 text-white font-black px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition-all active:scale-95 cursor-pointer border border-amber-300/30"
+            className="flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#ff7a47] text-white font-black px-3.5 py-1.5 rounded-xl text-xs shadow-sm transition-all active:scale-95 cursor-pointer border border-[#FF6B35]/40"
             title="Fast POS Sale Entry (F2)"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -171,22 +210,11 @@ export const HeaderBanner: React.FC<HeaderBannerProps> = ({
           <button
             type="button"
             onClick={onNewExpenseClick}
-            className="flex items-center gap-1.5 bg-[#132A4A] hover:bg-rose-950/80 text-rose-300 hover:text-white border border-rose-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-rose-950/80 text-rose-300 hover:text-white border border-rose-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
             title="Record Expense Voucher (Alt+E)"
           >
             <Plus className="w-3.5 h-3.5 text-rose-400" />
             <span>Expense</span>
-          </button>
-
-          {/* Secondary CTA: + Capital */}
-          <button
-            type="button"
-            onClick={onOpenCapitalModal}
-            className="hidden sm:flex items-center gap-1.5 bg-[#132A4A] hover:bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 font-bold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 cursor-pointer"
-            title="Inject Owner Capital (Alt+C)"
-          >
-            <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Capital</span>
           </button>
         </div>
 

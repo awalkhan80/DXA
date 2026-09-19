@@ -81,7 +81,7 @@ export const DesktopTitlebar: React.FC<DesktopTitlebarProps> = ({
         <div className="hidden sm:flex items-center gap-1.5 ml-2 pl-2.5 border-l border-stone-800 text-[10px] text-emerald-400 bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-800/30">
           <span className="w-1.5 h-1.5 rounded-full bg-[#06D6A0] animate-pulse"></span>
           <HardDrive className="w-3 h-3 text-[#06D6A0]" />
-          <span>SQLite Engine</span>
+          <span>POS Database Connected</span>
         </div>
       </div>
 

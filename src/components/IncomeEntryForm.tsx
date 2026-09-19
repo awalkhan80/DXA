@@ -23,10 +23,15 @@ import {
   X,
   Info,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Car,
+  Timer,
+  Phone,
+  Percent
 } from 'lucide-react';
-import { PaymentMethod, SaleCounter, SaleFormData, SaleRecord, B2BCustomer, TourGuide } from '../types';
+import { PaymentMethod, SaleCounter, SaleFormData, SaleRecord, B2BCustomer, TourGuide, Vehicle } from '../types';
 import { formatAED } from '../lib/utils';
+import { db } from '../db/sqlite';
 
 export const validateSale = (data: {
   sale_counter?: string;
@@ -86,62 +91,98 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
   const [time, setTime] = useState<string>(getCurrentTime());
   const [isAutoTime, setIsAutoTime] = useState<boolean>(true);
 
-  const fallbackCounters = [
-    { name: 'DXA Sale Counter', icon: Compass },
-    { name: 'Photo Sale', icon: Camera },
-    { name: 'Juice Counter Sale', icon: CupSoda },
-    { name: 'Supermarket Sale', icon: Store },
-    { name: 'Popcorn', icon: PopcornIcon }
-  ];
+  // Time Slot Durations as requested
+  const timeDurations = ['30 Minutes', '1 Hour', '2 Hours', '3 Hours'];
+  const [duration, setDuration] = useState<string>('1 Hour');
+
+  // Master Vehicles List
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+  const [rideLocation, setRideLocation] = useState<'Inside' | 'Outside'>('Inside');
+  const [contactNumber, setContactNumber] = useState<string>('');
+
+  // Bank Charges state for Card transactions
+  const [bankChargePercentage, setBankChargePercentage] = useState<string>('5');
+  const [bankChargeAmount, setBankChargeAmount] = useState<string>('');
+  const [addBankChargeToTotal, setAddBankChargeToTotal] = useState<boolean>(true);
+
+  useEffect(() => {
+    setVehicles(db.getVehicles(true));
+  }, []);
 
   const activeCounters = counters.filter((c) => c.is_active === 1);
-  // Clean and deduplicate payment methods, ensuring 'B2B' has no 'Car' prefix
   const seenMethods = new Set<string>();
   const activePaymentMethods = paymentMethods
     .filter((p) => p.is_active === 1)
-    .map((p) => ({
-      ...p,
-      method_name: p.method_name === 'Car B2B' ? 'B2B' : p.method_name
-    }))
+    .map((p) => {
+      let name = p.method_name === 'Car B2B' ? 'B2B' : p.method_name;
+      if (name === 'Credit') name = 'Include';
+      return { ...p, method_name: name };
+    })
+    .filter((p) => p.method_name !== 'B2B')
     .filter((p) => {
       if (seenMethods.has(p.method_name)) return false;
       seenMethods.add(p.method_name);
       return true;
     });
+
+  // Ensure 'Include' is present in payment methods
+  if (!activePaymentMethods.some((p) => p.method_name === 'Include')) {
+    activePaymentMethods.push({ id: 99, method_name: 'Include', is_active: 1 });
+  }
+
   const activeB2BCustomers = b2bCustomers.filter((b) => b.is_active === 1);
   const activeTourGuides = tourGuides.filter((g) => g.is_active === 1);
 
-  // Default B2B presets if list empty
-  const defaultB2BPresets = [
-    'Tripa tour',
-    'DFT',
-    'Dream Journey',
-    'Sand Journey',
-    'Desert Tiger'
-  ];
+  const defaultB2BPresets = ['Tripa tour', 'DFT', 'Dream Journey', 'Sand Journey', 'Desert Tiger'];
+  const availableB2BNames = activeB2BCustomers.length > 0 ? activeB2BCustomers.map(b => b.customer_name) : defaultB2BPresets;
 
-  const availableB2BNames = activeB2BCustomers.length > 0 
-    ? activeB2BCustomers.map(b => b.customer_name)
-    : defaultB2BPresets;
-
-  // Default Guides presets - default options: Sajid, Shahid
   const defaultGuidePresets = ['Sajid', 'Shahid'];
   const activeGuideList = activeTourGuides.map((g) => g.guide_name);
-  const availableGuideNames = Array.from(
-    new Set([...defaultGuidePresets, ...activeGuideList])
-  );
+  const availableGuideNames = Array.from(new Set([...defaultGuidePresets, ...activeGuideList]));
 
   const [saleType, setSaleType] = useState<'B2B' | 'B2C'>('B2C');
-  const [selectedCounter, setSelectedCounter] = useState<string>('DXA Sale Counter');
+  const [selectedCounter, setSelectedCounter] = useState<string>('Quad Bike Counter');
   const [selectedPayment, setSelectedPayment] = useState<string>('Cash');
   const [selectedB2BCustomer, setSelectedB2BCustomer] = useState<string>('');
   const [selectedGuide, setSelectedGuide] = useState<string>('');
 
-  const generateAutoRef = (type: 'B2B' | 'B2C', selectedDate: string) => {
+  const isDXARideCounter =
+    selectedCounter === 'Quad Bike Counter' ||
+    selectedCounter === 'Buggy Counter' ||
+    selectedCounter === 'Main Counter' ||
+    selectedCounter === 'DXA Counter' ||
+    selectedCounter.toLowerCase().includes('quad') ||
+    selectedCounter.toLowerCase().includes('buggy') ||
+    selectedCounter.toLowerCase().includes('dxa') ||
+    selectedCounter.toLowerCase().includes('ride');
+
+  const generateAutoRef = (type: 'B2B' | 'B2C', selectedDate: string, counterName?: string) => {
+    const cName = counterName || selectedCounter || 'Quad Bike Counter';
     const dateStr = (selectedDate || getTodayDate()).replace(/-/g, '');
     const seq = Math.floor(1000 + Math.random() * 9000);
+    const isRide =
+      cName === 'Quad Bike Counter' ||
+      cName === 'Buggy Counter' ||
+      cName === 'Main Counter' ||
+      cName === 'DXA Counter' ||
+      cName.toLowerCase().includes('quad') ||
+      cName.toLowerCase().includes('buggy') ||
+      cName.toLowerCase().includes('dxa') ||
+      cName.toLowerCase().includes('ride');
+
+    if (!isRide) {
+      const prefix = cName.split(' ')[0].toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return `${prefix || 'POS'}-${dateStr}-${seq}`;
+    }
     return `DXA-${type}-${dateStr}-${seq}`;
   };
+
+  useEffect(() => {
+    if (!isDXARideCounter && selectedPayment !== 'Cash' && selectedPayment !== 'Card') {
+      setSelectedPayment('Cash');
+    }
+  }, [selectedCounter, isDXARideCounter]);
 
   const [grossAmount, setGrossAmount] = useState<string>('');
   const [commissionAmount, setCommissionAmount] = useState<string>('');
@@ -166,6 +207,18 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
 
   const grossInputRef = useRef<HTMLInputElement>(null);
 
+  // Recalculate bank charge amount when gross amount or percentage changes
+  useEffect(() => {
+    if (selectedPayment === 'Card') {
+      const g = parseFloat(grossAmount) || 0;
+      const pct = parseFloat(bankChargePercentage) || 5;
+      const calcBank = Math.round((g * (pct / 100)) * 100) / 100;
+      setBankChargeAmount(calcBank.toString());
+    } else {
+      setBankChargeAmount('0');
+    }
+  }, [grossAmount, bankChargePercentage, selectedPayment]);
+
   useEffect(() => {
     if (!isAutoTime || editingRecord) return;
     const interval = setInterval(() => {
@@ -186,14 +239,19 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
       setSelectedCounter(editingRecord.sale_counter);
       setSelectedPayment(editingRecord.payment_method === 'Car B2B' ? 'B2B' : editingRecord.payment_method);
       setGrossAmount(editingRecord.gross_amount.toString());
-      setCommissionAmount(
-        editingRecord.commission_amount > 0 ? editingRecord.commission_amount.toString() : ''
-      );
+      setCommissionAmount(editingRecord.commission_amount > 0 ? editingRecord.commission_amount.toString() : '');
       setReferenceNo(editingRecord.reference_no || generateAutoRef(recSaleType, editingRecord.sale_date));
       setCustomerName(editingRecord.customer_name || '');
       setSelectedB2BCustomer(editingRecord.customer_name || '');
       setSelectedGuide(editingRecord.guide_name || '');
       setNotes(editingRecord.notes || '');
+      setDuration(editingRecord.duration || '1 Hour');
+      setSelectedVehicleId(editingRecord.vehicle_id || '');
+      const recLoc = editingRecord.ride_location || (editingRecord.vehicle_name?.includes('Outside') ? 'Outside' : 'Inside');
+      setRideLocation((recLoc as 'Inside' | 'Outside') || 'Inside');
+      setContactNumber(editingRecord.contact_number || '');
+      if (editingRecord.bank_charge_percentage) setBankChargePercentage(editingRecord.bank_charge_percentage.toString());
+      if (editingRecord.bank_charge_amount) setBankChargeAmount(editingRecord.bank_charge_amount.toString());
       setIsAutoTime(false);
       setShowOptionalFields(Boolean(editingRecord.reference_no || editingRecord.customer_name || editingRecord.notes));
     } else {
@@ -203,13 +261,55 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
     }
   }, [editingRecord]);
 
-  const parsedGross = parseFloat(grossAmount) || 0;
+  const parsedBaseAmount = parseFloat(grossAmount) || 0;
   const parsedCommission = parseFloat(commissionAmount) || 0;
+  const pct = (selectedPayment === 'Card' || selectedPayment === 'Cash') ? (parseFloat(bankChargePercentage) || 5) : 0;
+  const calculatedBankCharge = (selectedPayment === 'Card' || selectedPayment === 'Cash')
+    ? Math.round((parsedBaseAmount * (pct / 100)) * 100) / 100
+    : 0;
+
+  const totalSaleAmount = (selectedPayment === 'Card' && addBankChargeToTotal)
+    ? Math.round((parsedBaseAmount + calculatedBankCharge) * 100) / 100
+    : parsedBaseAmount;
+
+  const parsedGross = totalSaleAmount;
   const netAmount = Math.max(0, parsedGross - parsedCommission);
 
+  const selectedVeh = vehicles.find((v) => v.vehicle_id === selectedVehicleId || v.id.toString() === selectedVehicleId);
+  
+  const isBuggy = Boolean(
+    selectedVeh && (
+      selectedVeh.vehicle_name.toLowerCase().includes('polaris') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('polariz') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('can-am') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('canam') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('buggy') ||
+      selectedVeh.vehicle_category?.toLowerCase().includes('polaris') ||
+      selectedVeh.vehicle_category?.toLowerCase().includes('can-am') ||
+      selectedVeh.vehicle_category?.toLowerCase().includes('buggy')
+    )
+  );
+
+  const isQuadRaptorYamaha = Boolean(
+    selectedVeh && (
+      selectedVeh.vehicle_name.toLowerCase().includes('quad') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('raptor') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('yamaha') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('350') ||
+      selectedVeh.vehicle_name.toLowerCase().includes('700') ||
+      selectedVeh.vehicle_category?.toLowerCase().includes('quad')
+    )
+  );
+
+  useEffect(() => {
+    if (isBuggy) {
+      setRideLocation('Outside');
+    }
+  }, [selectedVehicleId, isBuggy]);
+
   const applyCommissionPercent = (percent: number) => {
-    if (parsedGross > 0) {
-      const calc = Math.round(((parsedGross * percent) / 100) * 100) / 100;
+    if (parsedBaseAmount > 0) {
+      const calc = Math.round(((parsedBaseAmount * percent) / 100) * 100) / 100;
       setCommissionAmount(calc.toString());
       if (!selectedGuide && availableGuideNames.length > 0) {
         setSelectedGuide(availableGuideNames[0]);
@@ -320,13 +420,20 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
     setTime(getCurrentTime());
     setIsAutoTime(true);
     setSelectedCounter(activeCounters[0]?.counter_name || 'DXA Sale Counter');
-    setSelectedPayment(saleType === 'B2B' ? 'B2B' : 'Cash');
+    setSelectedPayment('Cash');
     setSelectedB2BCustomer('');
     setSelectedGuide('');
     setGrossAmount('');
     setCommissionAmount('');
-    setReferenceNo(generateAutoRef(saleType, getTodayDate()));
+    setReferenceNo(generateAutoRef('B2C', getTodayDate()));
     setCustomerName('');
+    setContactNumber('');
+    setDuration('1 Hour');
+    setSelectedVehicleId('');
+    setRideLocation('Inside');
+    setBankChargePercentage('5');
+    setBankChargeAmount('0');
+    setAddBankChargeToTotal(true);
     setNotes('');
     setError(null);
     setShowOptionalFields(false);
@@ -351,6 +458,9 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
 
     try {
       const finalRef = referenceNo.trim() || generateAutoRef(saleType, date);
+      const selVeh = vehicles.find((v) => v.vehicle_id === selectedVehicleId || v.id.toString() === selectedVehicleId);
+      const isCredit = selectedPayment === 'Include' || selectedPayment.toLowerCase() === 'credit';
+
       onSave({
         sale_date: date,
         sale_time: time,
@@ -360,10 +470,18 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
         commission_amount: parsedCommission,
         net_amount: netAmount,
         reference_no: finalRef,
-        customer_name: (saleType === 'B2B' ? (selectedB2BCustomer || customerName) : customerName).trim(),
+        customer_name: (selectedPayment === 'Include' || selectedPayment === 'Credit' || selectedPayment === 'B2B' || saleType === 'B2B' ? (selectedB2BCustomer || customerName) : customerName).trim(),
         guide_name: selectedGuide.trim(),
         sale_type: saleType,
-        notes: notes.trim()
+        notes: notes.trim(),
+        duration,
+        vehicle_id: selectedVehicleId || undefined,
+        vehicle_name: selVeh ? `${selVeh.vehicle_name} (${rideLocation})` : undefined,
+        ride_location: rideLocation,
+        contact_number: contactNumber.trim() || undefined,
+        is_credit: isCredit,
+        bank_charge_percentage: (selectedPayment === 'Card' || selectedPayment === 'Cash') ? parseFloat(bankChargePercentage) || 0 : 0,
+        bank_charge_amount: (selectedPayment === 'Card' || selectedPayment === 'Cash') ? parseFloat(bankChargeAmount) || 0 : 0
       });
 
       setSuccessMessage(`Sale of ${formatAED(netAmount)} recorded successfully!`);
@@ -411,7 +529,7 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
 
   const getPaymentIcon = (name: string) => {
     if (name.toLowerCase().includes('card')) return CreditCard;
-    if (name.toLowerCase().includes('b2b')) return Globe;
+    if (name.toLowerCase().includes('include') || name.toLowerCase().includes('credit') || name.toLowerCase().includes('b2b')) return Building;
     return Banknote;
   };
 
@@ -438,7 +556,9 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-stone-300">
-              DXA Counter • B2B Tour Operators • Multi-Payment • Automatic Guide Commission
+              {isDXARideCounter
+                ? 'DXA Counter • Include / Credit Accounts • Cash / Card • Automatic Guide Commission'
+                : `${selectedCounter} • Cash / Card Only • Guide Commission (+5% Fee)`}
             </p>
           </div>
         </div>
@@ -481,71 +601,6 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="p-5 space-y-5">
-        {/* Main Sales Channel: B2B vs B2C */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-black uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
-            <span>Select Sales Channel</span>
-            <span className="text-rose-500">*</span>
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1.5 bg-stone-100 rounded-2xl border border-stone-200 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => {
-                setSaleType('B2C');
-                if (selectedPayment === 'B2B') setSelectedPayment('Cash');
-                setReferenceNo(generateAutoRef('B2C', date));
-              }}
-              className={`flex items-center gap-3 p-3 rounded-xl font-bold transition-all cursor-pointer text-left ${
-                saleType === 'B2C'
-                  ? 'bg-stone-900 text-white shadow-md ring-2 ring-stone-700/50 scale-[1.01]'
-                  : 'text-stone-700 hover:text-stone-900 hover:bg-white/80'
-              }`}
-            >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                saleType === 'B2C' ? 'bg-stone-800 text-emerald-400' : 'bg-stone-200 text-stone-600'
-              }`}>
-                <Store className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-black uppercase tracking-wide">B2C Retail & Walk-in</div>
-                <div className={`text-[11px] ${saleType === 'B2C' ? 'text-stone-300' : 'text-stone-500'}`}>
-                  Direct guest, cash/card counters & retail
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSaleType('B2B');
-                setSelectedPayment('B2B');
-                if (availableB2BNames.length > 0 && !selectedB2BCustomer) {
-                  setSelectedB2BCustomer(availableB2BNames[0]);
-                  setCustomerName(availableB2BNames[0]);
-                }
-                setReferenceNo(generateAutoRef('B2B', date));
-              }}
-              className={`flex items-center gap-3 p-3 rounded-xl font-bold transition-all cursor-pointer text-left ${
-                saleType === 'B2B'
-                  ? 'bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white shadow-md ring-2 ring-orange-300/60 scale-[1.01]'
-                  : 'text-stone-700 hover:text-stone-900 hover:bg-white/80'
-              }`}
-            >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                saleType === 'B2B' ? 'bg-white/20 text-amber-100' : 'bg-stone-200 text-stone-600'
-              }`}>
-                <Building className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-black uppercase tracking-wide">B2B Tour Operator / Agency</div>
-                <div className={`text-[11px] ${saleType === 'B2B' ? 'text-orange-100' : 'text-stone-500'}`}>
-                  Tripa, DFT, Dream Journey, Sand Journey...
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         {/* Auto Reference Number & Date/Time Bar */}
         <div className="p-3 bg-stone-50/90 rounded-xl border border-stone-200 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
@@ -655,8 +710,16 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {(activeCounters.length > 0 ? activeCounters : fallbackCounters.map((c, i) => ({ id: i, counter_name: c.name, is_active: 1 }))).map((counter) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {(activeCounters.length > 0 ? activeCounters : [
+              { id: 1, counter_name: 'Quad Bike Counter', is_active: 1 },
+              { id: 2, counter_name: 'Buggy Counter', is_active: 1 },
+              { id: 3, counter_name: 'Photo Counter', is_active: 1 },
+              { id: 4, counter_name: 'Cafe Counter', is_active: 1 },
+              { id: 5, counter_name: 'Juice Counter', is_active: 1 },
+              { id: 6, counter_name: 'Popcorn Counter', is_active: 1 },
+              { id: 7, counter_name: 'Supermarket Counter', is_active: 1 }
+            ]).map((counter) => {
               const Icon = getCounterIcon(counter.counter_name);
               const isSelected = selectedCounter === counter.counter_name;
               return (
@@ -728,14 +791,22 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {(activePaymentMethods.length > 0 ? activePaymentMethods : [
               { id: 1, method_name: 'Cash', is_active: 1 },
               { id: 2, method_name: 'Card', is_active: 1 },
-              { id: 3, method_name: 'B2B', is_active: 1 }
-            ]).map((method) => {
-              // Normalize method name to avoid "Car B2B"
-              const cleanMethodName = method.method_name === 'Car B2B' ? 'B2B' : method.method_name;
+              { id: 3, method_name: 'Include', is_active: 1 }
+            ])
+              .filter((method) => {
+                const cleanName = method.method_name === 'Car B2B' ? 'B2B' : (method.method_name === 'Credit' ? 'Include' : method.method_name);
+                if (cleanName === 'B2B') return false;
+                if (!isDXARideCounter) {
+                  return cleanName === 'Cash' || cleanName === 'Card';
+                }
+                return true;
+              })
+              .map((method) => {
+              const cleanMethodName = method.method_name === 'Car B2B' ? 'B2B' : (method.method_name === 'Credit' ? 'Include' : method.method_name);
               const Icon = getPaymentIcon(cleanMethodName);
               const isSelected = selectedPayment === cleanMethodName;
               return (
@@ -744,18 +815,21 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
                   key={method.id}
                   onClick={() => {
                     setSelectedPayment(cleanMethodName);
-                    if (cleanMethodName === 'B2B' && (!commissionAmount || commissionAmount === '0')) {
-                      if (parsedGross > 0) {
-                        setCommissionAmount((Math.round(parsedGross * 0.15 * 100) / 100).toString());
+                    if (cleanMethodName === 'Include' || cleanMethodName === 'Credit') {
+                      if (availableB2BNames.length > 0 && !selectedB2BCustomer) {
+                        setSelectedB2BCustomer(availableB2BNames[0]);
+                        setCustomerName(availableB2BNames[0]);
                       }
                       if (!selectedGuide && availableGuideNames.length > 0) {
                         setSelectedGuide(availableGuideNames[0]);
                       }
                     }
                   }}
-                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 text-xs font-black transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border-2 text-xs font-black transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-stone-900 bg-stone-900 text-white shadow-xs'
+                      ? cleanMethodName === 'Include' || cleanMethodName === 'Credit'
+                        ? 'border-purple-800 bg-purple-900 text-white shadow-xs'
+                        : 'border-stone-900 bg-stone-900 text-white shadow-xs'
                       : 'border-stone-200 hover:border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
                   }`}
                 >
@@ -766,130 +840,291 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
             })}
           </div>
 
-          {/* Card payment helper callout when commission is present */}
-          {selectedPayment === 'Card' && parsedCommission > 0 && (
-            <div className="mt-2.5 p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-2 animate-in fade-in">
-              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold">Card Payment Commission Rule:</span> Gross sale of <span className="font-mono font-bold">{formatAED(parsedGross)}</span> is billed via Card terminal. The commission of <span className="font-mono font-bold text-amber-700">{formatAED(parsedCommission)}</span> for guide <span className="font-bold">{selectedGuide || '(select guide)'}</span> will be paid out directly from <span className="font-bold underline">Cash</span> in the drawer.
+          {/* Payment Fee (+5%) Automation callout for Cash & Card */}
+          {(selectedPayment === 'Card' || selectedPayment === 'Cash') && (
+            <div className={`mt-2.5 p-3.5 border-2 rounded-2xl text-xs space-y-2.5 animate-in fade-in ${
+              selectedPayment === 'Card'
+                ? 'bg-blue-50/90 border-blue-300 text-blue-950'
+                : 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+            }`}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 font-black text-sm">
+                  <Percent className={`w-4 h-4 ${selectedPayment === 'Card' ? 'text-blue-600' : 'text-emerald-600'}`} />
+                  <span>{selectedPayment} Bank Charge (+{bankChargePercentage}% Fee)</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="text-[11px] text-stone-600 font-bold">Fee Rate:</span>
+                  <input
+                    type="number"
+                    value={bankChargePercentage}
+                    onChange={(e) => setBankChargePercentage(e.target.value)}
+                    className="w-14 bg-white border border-stone-300 rounded px-1.5 py-0.5 text-xs text-center font-bold"
+                  />
+                  <span className="text-xs font-bold">%</span>
+                </div>
               </div>
+
+              {selectedPayment === 'Card' && (
+                <div className="pt-2 border-t border-blue-200/80">
+                  <label className="flex items-center gap-2 text-blue-950 font-bold cursor-pointer select-none text-xs">
+                    <input
+                      type="checkbox"
+                      checked={addBankChargeToTotal}
+                      onChange={(e) => setAddBankChargeToTotal(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span>Add +{bankChargePercentage}% Extra Bank Charge to Total Card Sale Amount</span>
+                  </label>
+                </div>
+              )}
+
+              {selectedPayment === 'Card' ? (
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-blue-200/80 font-mono text-center">
+                  <div className="bg-white/90 p-2 rounded-xl border border-blue-200 shadow-2xs">
+                    <span className="block text-[10px] text-stone-500 font-sans font-bold uppercase">Base Sale</span>
+                    <span className="font-bold text-stone-900 text-xs">{formatAED(parsedBaseAmount)}</span>
+                  </div>
+                  <div className="bg-blue-100/90 p-2 rounded-xl border border-blue-300 shadow-2xs">
+                    <span className="block text-[10px] text-blue-800 font-sans font-bold uppercase">+{bankChargePercentage}% Fee</span>
+                    <span className="font-bold text-blue-900 text-xs">+{formatAED(calculatedBankCharge)}</span>
+                  </div>
+                  <div className="bg-blue-600 p-2 rounded-xl text-white shadow-xs">
+                    <span className="block text-[10px] text-blue-100 font-sans font-bold uppercase">Total Card Sale</span>
+                    <span className="font-black text-xs text-white">{formatAED(totalSaleAmount)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-200/80">
+                  <span className="text-stone-600">Calculated Cash Fee (+{bankChargePercentage}%):</span>
+                  <span className="font-mono font-black text-stone-900">{formatAED(calculatedBankCharge)}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Step 3: Dynamic B2B Customer Dropdown & Quick Selector */}
-        <div className={`rounded-2xl p-4 border transition-all ${
-          selectedPayment === 'B2B' 
-            ? 'bg-orange-50/60 border-orange-300 ring-2 ring-orange-200/50' 
-            : 'bg-stone-50/70 border-stone-200'
-        } space-y-3`}>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Building className="w-4 h-4 text-[#FF6B35]" />
-              <label className="text-xs font-black uppercase tracking-wider text-stone-800">
-                3. B2B Customer / Tour Operator
+        {/* Step 2.5: Vehicle Selection, Track Location (Inside/Outside) & Ride Duration (Only for Ride / DXA Counters) */}
+        {isDXARideCounter && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200">
+            <div>
+              <label className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5 mb-1.5">
+                <Car className="w-3.5 h-3.5 text-orange-600" />
+                <span>Vehicle Selection</span>
               </label>
-              {selectedPayment === 'B2B' && (
-                <span className="text-[10px] bg-[#FF6B35] text-white font-black px-2 py-0.5 rounded-full uppercase">
-                  B2B Active
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => setSelectedVehicleId(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-800 focus:outline-hidden focus:border-[#FF6B35] shadow-2xs"
+              >
+                <option value="">-- Select Vehicle (Optional) --</option>
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.vehicle_id}>
+                    {v.vehicle_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ride Track / Location (Inside vs Outside) */}
+            <div>
+              <label className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Track Location</span>
                 </span>
+                {isBuggy ? (
+                  <span className="text-[10px] font-black text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                    Buggy (Outside Only)
+                  </span>
+                ) : isQuadRaptorYamaha ? (
+                  <span className="text-[10px] font-black text-indigo-900 bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-300">
+                    Quad / Raptor / Yamaha
+                  </span>
+                ) : null}
+              </label>
+              {isBuggy ? (
+                <div className="bg-amber-50 border border-amber-300 px-3 py-2 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-center gap-1.5 shadow-2xs">
+                  <span>🏜️ Buggy Rides are Always Outside Track</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1 bg-white p-1 rounded-xl border border-stone-300 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setRideLocation('Inside')}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      rideLocation === 'Inside'
+                        ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                        : 'text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span>🏟️ Inside</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRideLocation('Outside')}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      rideLocation === 'Outside'
+                        ? 'bg-amber-600 text-white shadow-2xs font-black'
+                        : 'text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span>🏜️ Outside</span>
+                  </button>
+                </div>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsAddingB2B(!isAddingB2B)}
-              className="text-xs font-bold text-[#FF6B35] hover:text-[#e0531f] flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 border border-orange-300 transition-colors cursor-pointer shadow-2xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Add New B2B Partner</span>
-            </button>
-          </div>
-
-          {/* Quick Add B2B Customer Inline Box */}
-          {isAddingB2B && (
-            <div className="p-3 bg-white rounded-xl border-2 border-orange-300 shadow-sm flex items-center gap-2 animate-in fade-in">
-              <input
-                type="text"
-                placeholder="e.g. Desert Safari Dubai, Arabian Adventures, Royal Safari"
-                value={newB2BName}
-                onChange={(e) => setNewB2BName(e.target.value)}
-                className="flex-1 bg-stone-50 border border-stone-300 rounded-lg px-3 py-1.5 text-xs text-stone-800 focus:outline-hidden focus:border-[#FF6B35]"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleCreateNewB2B}
-                disabled={!newB2BName.trim()}
-                className="bg-[#FF6B35] hover:bg-[#e0531f] disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
-              >
-                Save & Select
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddingB2B(false)}
-                className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Dynamic Dropdown Select for B2B Customers */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
+            <div>
+              <label className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5 mb-1.5">
+                <Timer className="w-3.5 h-3.5 text-amber-600" />
+                <span>Ride Duration</span>
+              </label>
               <select
-                value={selectedB2BCustomer}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === '__ADD_NEW__') {
-                    setIsAddingB2B(true);
-                  } else {
-                    handleSelectB2BCustomer(val);
-                  }
-                }}
-                className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-800 focus:outline-hidden focus:border-[#FF6B35] shadow-2xs appearance-none"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-800 focus:outline-hidden focus:border-[#FF6B35] shadow-2xs"
               >
-                <option value="">-- Select --</option>
-                {availableB2BNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                {timeDurations.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
-                <option value="__ADD_NEW__" className="text-[#FF6B35] font-black">
-                  + Add New B2B Customer...
-                </option>
               </select>
-              <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 top-2.5 pointer-events-none" />
             </div>
+          </div>
+        )}
 
-            {selectedB2BCustomer && (
+        {/* Step 3: Dynamic Customer / Agency Account Dropdown (Appears for Include/Credit/B2B sales on Ride Counters) */}
+        {isDXARideCounter && (selectedPayment === 'Include' || selectedPayment === 'Credit' || selectedPayment === 'B2B' || saleType === 'B2B') && (
+          <div className="rounded-2xl p-4 border transition-all bg-purple-50/60 border-purple-300 ring-2 ring-purple-200/50 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-purple-800" />
+                <label className="text-xs font-black uppercase tracking-wider text-stone-800">
+                  3. Customer / Agency Account (Include)
+                </label>
+                <span className="text-[10px] bg-purple-800 text-white font-black px-2 py-0.5 rounded-full uppercase">
+                  Include Active
+                </span>
+              </div>
+
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedB2BCustomer('');
-                  setCustomerName('');
-                }}
-                className="text-xs text-stone-500 hover:text-rose-600 flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-stone-300 hover:border-rose-300 bg-white cursor-pointer transition-colors"
-                title="Clear B2B selection"
+                onClick={() => setIsAddingB2B(!isAddingB2B)}
+                className="text-xs font-bold text-[#FF6B35] hover:text-[#e0531f] flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 border border-orange-300 transition-colors cursor-pointer shadow-2xs"
               >
-                <X className="w-3.5 h-3.5" />
-                <span>Clear</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add New Account</span>
               </button>
+            </div>
+
+            {/* Quick Add B2B / Credit Customer Inline Box */}
+            {isAddingB2B && (
+              <div className="p-3 bg-white rounded-xl border-2 border-orange-300 shadow-sm flex items-center gap-2 animate-in fade-in">
+                <input
+                  type="text"
+                  placeholder="e.g. Desert Safari Dubai, Arabian Adventures, Royal Safari"
+                  value={newB2BName}
+                  onChange={(e) => setNewB2BName(e.target.value)}
+                  className="flex-1 bg-stone-50 border border-stone-300 rounded-lg px-3 py-1.5 text-xs text-stone-800 focus:outline-hidden focus:border-[#FF6B35]"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateNewB2B}
+                  disabled={!newB2BName.trim()}
+                  className="bg-[#FF6B35] hover:bg-[#e0531f] disabled:opacity-50 text-white text-xs font-bold px-4 py-1.5 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                >
+                  Save & Select
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingB2B(false)}
+                  className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             )}
+
+            {/* Dynamic Dropdown Select for B2B / Credit Customers */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={selectedB2BCustomer}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__ADD_NEW__') {
+                      setIsAddingB2B(true);
+                    } else {
+                      handleSelectB2BCustomer(val);
+                    }
+                  }}
+                  className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-800 focus:outline-hidden focus:border-[#FF6B35] shadow-2xs appearance-none"
+                >
+                  <option value="">-- Select Customer / Agency --</option>
+                  {availableB2BNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value="__ADD_NEW__" className="text-[#FF6B35] font-black">
+                    + Add New Customer Account...
+                  </option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-stone-400 absolute right-3 top-2.5 pointer-events-none" />
+              </div>
+
+              {selectedB2BCustomer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedB2BCustomer('');
+                    setCustomerName('');
+                  }}
+                  className="text-xs text-stone-500 hover:text-rose-600 flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-stone-300 hover:border-rose-300 bg-white cursor-pointer transition-colors"
+                  title="Clear selection"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Step 4: Amount & Commission Calculation */}
         <div className="bg-stone-50/90 rounded-2xl p-4 border border-stone-200 space-y-4">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-700 pb-2 border-b border-stone-200 flex-wrap gap-2">
+            <span className="flex items-center gap-1.5">
+              <Store className="w-4 h-4 text-[#FF6B35]" />
+              <span>Sale Counter: <strong className="text-stone-900 font-black">{selectedCounter || 'Photo Counter'}</strong></span>
+            </span>
+            <div className="flex items-center gap-2">
+              {!isDXARideCounter && (
+                <span className="text-[10px] text-stone-900 bg-stone-200 border border-stone-300 px-2.5 py-0.5 rounded-md font-black">
+                  Cash / Card Only
+                </span>
+              )}
+              <span className="text-[10px] text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-md font-black">
+                Guide Commission Enabled
+              </span>
+              <span className="text-[10px] text-blue-900 bg-blue-100 border border-blue-300 px-2.5 py-0.5 rounded-md font-black">
+                +5% Fee (Cash & Card)
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Gross Amount Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-black uppercase tracking-wider text-stone-700">
-                  Gross Amount <span className="text-rose-500">*</span>
+                  {selectedPayment === 'Card' && addBankChargeToTotal ? 'Base Sale Amount' : 'Gross Amount'} <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-stone-500 font-mono">Total customer bill</span>
+                <span className="text-[10px] text-stone-500 font-mono">
+                  {selectedPayment === 'Card' && addBankChargeToTotal ? 'Before +5% Bank Fee' : 'Total customer bill'}
+                </span>
               </div>
               <div className="relative">
                 <input
@@ -907,6 +1142,13 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
                   AED
                 </span>
               </div>
+
+              {selectedPayment === 'Card' && addBankChargeToTotal && parsedBaseAmount > 0 && (
+                <div className="mt-2 p-2 bg-blue-100 border border-blue-300 rounded-lg text-xs font-mono font-bold text-blue-950 flex items-center justify-between">
+                  <span className="text-[10px] text-blue-800 font-sans font-bold uppercase">Total Charged to Card:</span>
+                  <span className="text-sm font-black text-blue-900">{formatAED(totalSaleAmount)}</span>
+                </div>
+              )}
 
               {/* Quick Preset Buttons */}
               <div className="flex gap-1.5 mt-2 flex-wrap">
@@ -986,7 +1228,7 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
                   Net Amount (Income)
                 </span>
                 <span className="text-[9px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
-                  Gross - Commission
+                  {selectedPayment === 'Card' && addBankChargeToTotal ? 'Total Sale - Commission' : 'Gross - Commission'}
                 </span>
               </div>
 
@@ -996,11 +1238,11 @@ export const IncomeEntryForm: React.FC<IncomeEntryFormProps> = ({
                 </div>
               </div>
 
-              <div className="text-[10px] text-emerald-800 font-mono flex items-center justify-between">
+              <div className="text-[10px] text-emerald-800 font-mono flex items-center justify-between flex-wrap gap-1">
                 <span>{formatAED(parsedGross)} - {formatAED(parsedCommission)}</span>
-                {selectedPayment === 'Card' && parsedCommission > 0 && (
-                  <span className="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 py-0.5 rounded">
-                    Comm. paid from Cash
+                {selectedPayment === 'Card' && (
+                  <span className="text-[9px] text-blue-900 font-bold bg-blue-100 px-1.5 py-0.5 rounded">
+                    Includes +{bankChargePercentage}% Fee ({formatAED(calculatedBankCharge)})
                   </span>
                 )}
               </div>

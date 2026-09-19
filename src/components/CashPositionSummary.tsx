@@ -39,7 +39,7 @@ export const CashPositionSummary: React.FC<CashPositionSummaryProps> = ({
               <span>Cash Flow & Drawer Net Position ({dateFilterLabel})</span>
             </h3>
             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-emerald-500/30">
-              Live SQLite Balancing
+              Live Drawer Balancing
             </span>
           </div>
           <p className="text-xs text-stone-400 mt-0.5">

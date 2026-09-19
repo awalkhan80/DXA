@@ -181,7 +181,7 @@ export const CounterManagerModal: React.FC<CounterManagerModalProps> = ({
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="w-5 h-5 text-[#F7931E]" />
             <div>
-              <h3 className="text-sm font-bold text-white">Master Data & Configuration (SQLite)</h3>
+              <h3 className="text-sm font-bold text-white">Master Data & System Settings</h3>
               <p className="text-[10px] text-stone-400">
                 Counters, B2B Tour Agencies, Payment Methods, Categories & Backup
               </p>
@@ -773,7 +773,7 @@ export const CounterManagerModal: React.FC<CounterManagerModalProps> = ({
                   <Database className="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" />
                   <div>
                     <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">
-                      SQLite Database Management
+                      System Database Backup & Restore
                     </h4>
                     <p className="text-xs text-indigo-700/90 mt-0.5">
                       Export a safe point-in-time snapshot or restore from a previously exported database backup file (.db / .sql).
@@ -905,13 +905,13 @@ export const CounterManagerModal: React.FC<CounterManagerModalProps> = ({
               <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-[11px] text-stone-600 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold text-stone-800">
                   <span>💻</span>
-                  <span>Windows Installer & Embedded SQLite Path:</span>
+                  <span>Desktop Application Local Storage Path:</span>
                 </div>
                 <div className="font-mono text-[10px] bg-white border border-stone-200 p-2 rounded text-stone-700 select-all overflow-x-auto">
                   %APPDATA%\desert-xtreme-pos\database.db
                 </div>
                 <p className="text-[10px] text-stone-500">
-                  When running Desert Xtreme POS (.exe), SQLite stores all transactions in the user AppData directory automatically.
+                  When running Desert Xtreme POS (.exe), local storage maintains all transactions in the user AppData directory automatically.
                 </p>
               </div>
             </div>

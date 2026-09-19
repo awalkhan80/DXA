@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "start": "electron .",
+    "electron:start": "electron .",
     "build:exe": "vite build && electron-builder"
   },
   "build": {

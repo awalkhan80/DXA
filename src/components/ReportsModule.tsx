@@ -796,19 +796,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               Active Range: <span className="font-bold text-stone-800">{appliedFromDate || 'Beginning'}</span> to{' '}
               <span className="font-bold text-stone-800">{appliedToDate || 'Present'}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowSql(!showSql)}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                showSql
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                  : 'bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200'
-              }`}
-              title="Toggle underlying SQLite query definitions"
-            >
-              <Code className="w-3 h-3" />
-              <span>{showSql ? 'Hide SQL Queries' : 'View SQL Queries'}</span>
-            </button>
           </div>
           <div className="flex items-center gap-3">
             <span>Sales: <strong className="text-stone-800 font-mono">{filteredSales.length}</strong></span>
@@ -816,80 +803,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <span>Owner Capital: <strong className="text-stone-800 font-mono">{filteredCapital.length}</strong></span>
           </div>
         </div>
-
-        {/* Collapsible SQLite Query Inspection Card */}
-        {showSql && (
-          <div className="mt-3 pt-3 border-t border-amber-200/80 bg-stone-900 text-stone-100 p-4 rounded-xl font-mono text-[11px] space-y-3 shadow-inner">
-            <div className="flex items-center justify-between border-b border-stone-700 pb-1.5">
-              <span className="text-[#FF6B35] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Code className="w-3.5 h-3.5" />
-                <span>SQLite Query Audit Definition ({activeTab.toUpperCase()})</span>
-              </span>
-              <span className="text-stone-400 text-[10px]">Params: ['{appliedFromDate || '1970-01-01'}', '{appliedToDate || '9999-12-31'}']</span>
-            </div>
-
-            {activeTab === 'cashflow' && (
-              <div>
-                <span className="text-emerald-400 font-bold block mb-1">-- 1. Cash Flow</span>
-                <pre className="text-stone-300 bg-black/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre">
-{`SELECT 
-  (SELECT COALESCE(SUM(net_amount), 0) FROM sales WHERE sale_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}') AS total_sales,
-  (SELECT COALESCE(SUM(amount), 0) FROM capital_injections WHERE injection_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}') AS total_capital,
-  (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}') AS total_expenses;`}
-                </pre>
-              </div>
-            )}
-
-            {activeTab === 'sales' && (
-              <div>
-                <span className="text-emerald-400 font-bold block mb-1">-- 2. Total Sales</span>
-                <pre className="text-stone-300 bg-black/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre">
-{`SELECT * FROM sales 
-WHERE sale_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}' 
-ORDER BY sale_date, sale_time;`}
-                </pre>
-              </div>
-            )}
-
-            {activeTab === 'expenses' && (
-              <div className="space-y-2">
-                <div>
-                  <span className="text-emerald-400 font-bold block mb-1">-- 3. Expenses by Category</span>
-                  <pre className="text-stone-300 bg-black/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre">
-{`SELECT expense_category, SUM(amount) as total 
-FROM expenses 
-WHERE expense_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}' 
-GROUP BY expense_category;`}
-                  </pre>
-                </div>
-                <div>
-                  <span className="text-emerald-400 font-bold block mb-1">-- 4. Expenses by Source</span>
-                  <pre className="text-stone-300 bg-black/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre">
-{`SELECT expense_source, SUM(amount) as total 
-FROM expenses 
-WHERE expense_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}' 
-GROUP BY expense_source;`}
-                  </pre>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'counters' && (
-              <div>
-                <span className="text-emerald-400 font-bold block mb-1">-- 5. Counter-wise Sales</span>
-                <pre className="text-stone-300 bg-black/40 p-2.5 rounded-lg overflow-x-auto whitespace-pre">
-{`SELECT sale_counter, 
-       COUNT(*) as transactions,
-       SUM(gross_amount) as gross_sales,
-       SUM(net_amount) as net_sales
-FROM sales 
-WHERE sale_date BETWEEN '${appliedFromDate || '1970-01-01'}' AND '${appliedToDate || '9999-12-31'}' 
-GROUP BY sale_counter;`}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -1316,6 +1229,7 @@ GROUP BY sale_counter;`}
                   <tr>
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3">Counter</th>
+                    <th className="px-4 py-3">Vehicle & Track</th>
                     <th className="px-4 py-3">Method</th>
                     <th className="px-4 py-3 text-right">Gross</th>
                     <th className="px-4 py-3 text-right">Comm.</th>
@@ -1324,39 +1238,61 @@ GROUP BY sale_counter;`}
                 </thead>
                 <tbody className="divide-y divide-stone-100 font-sans">
                   {filteredSales.length > 0 ? (
-                    filteredSales.map((s) => (
-                      <tr key={s.id} className="hover:bg-amber-50/40 transition-colors">
-                        <td className="px-4 py-2.5 font-mono font-bold text-stone-800 whitespace-nowrap">
-                          {formatDisplayDate(s.sale_date)}
-                        </td>
-                        <td className="px-4 py-2.5 font-semibold text-stone-900 whitespace-nowrap">
-                          {s.sale_counter}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            s.payment_method === 'Cash'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : s.payment_method === 'Card'
-                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                              : 'bg-purple-100 text-purple-800 border border-purple-200'
-                          }`}>
-                            {s.payment_method}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono font-medium text-stone-700">
-                          {formatAED(s.gross_amount)}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-purple-700">
-                          {s.commission_amount > 0 ? formatAED(s.commission_amount) : '0'}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono font-black text-emerald-700">
-                          {formatAED(s.net_amount)}
-                        </td>
-                      </tr>
-                    ))
+                    filteredSales.map((s) => {
+                      const isOutside = s.ride_location === 'Outside' || (s.vehicle_name && s.vehicle_name.includes('Outside'));
+                      const isInside = s.ride_location === 'Inside' || (s.vehicle_name && s.vehicle_name.includes('Inside'));
+                      return (
+                        <tr key={s.id} className="hover:bg-amber-50/40 transition-colors">
+                          <td className="px-4 py-2.5 font-mono font-bold text-stone-800 whitespace-nowrap">
+                            {formatDisplayDate(s.sale_date)}
+                          </td>
+                          <td className="px-4 py-2.5 font-semibold text-stone-900 whitespace-nowrap">
+                            {s.sale_counter}
+                          </td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            {s.vehicle_name ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-stone-800">{s.vehicle_name}</span>
+                                {(s.ride_location || isOutside || isInside) && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-black border ${
+                                    isOutside
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : 'bg-indigo-100 text-indigo-900 border-indigo-300'
+                                  }`}>
+                                    {isOutside ? 'Outside' : 'Inside'}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-stone-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              s.payment_method === 'Cash'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : s.payment_method === 'Card'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : 'bg-purple-100 text-purple-800 border border-purple-200'
+                            }`}>
+                              {s.payment_method}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono font-medium text-stone-700">
+                            {formatAED(s.gross_amount)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-purple-700">
+                            {s.commission_amount > 0 ? formatAED(s.commission_amount) : '0'}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono font-black text-emerald-700">
+                            {formatAED(s.net_amount)}
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-stone-400">
+                      <td colSpan={7} className="text-center py-10 text-stone-400">
                         No sales found for the selected date range.
                       </td>
                     </tr>
@@ -1412,10 +1348,15 @@ GROUP BY sale_counter;`}
                 <div className="flex justify-between text-xs py-1">
                   <span className="text-stone-600 flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5 text-purple-600" />
-                    <span>B2B:</span>
+                    <span>Include / Credit / B2B:</span>
                   </span>
                   <span className="font-mono font-bold text-stone-900">
-                    {formatAED(salesByPaymentMethod['B2B'] || 0)}
+                    {formatAED(
+                      (salesByPaymentMethod['Include'] || 0) +
+                      (salesByPaymentMethod['Credit'] || 0) +
+                      (salesByPaymentMethod['B2B'] || 0) +
+                      (salesByPaymentMethod['Car B2B'] || 0)
+                    )}
                   </span>
                 </div>
               </div>

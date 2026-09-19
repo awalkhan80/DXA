@@ -114,7 +114,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, dateFilterL
         </div>
 
         <div className="mt-2 text-[10px] text-stone-400 text-right pt-1.5 border-t border-stone-100">
-          Embedded SQLite Sales Ledger
+          Live Sales Ledger
         </div>
       </div>
     </div>
